@@ -194,21 +194,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 		for section: CollectionSection,
 		environment: NSCollectionLayoutEnvironment
 	) -> NSCollectionLayoutSection {
-		let layoutSection: NSCollectionLayoutSection
-
-		switch section.layout {
-		case .vertical:
-			layoutSection = makeVerticalSection()
-
-		case let .horizontal(itemWidth, itemHeight):
-			layoutSection = makeHorizontalSection(itemWidth: itemWidth, itemHeight: itemHeight)
-
-		case .insetGrouped:
-			layoutSection = makeInsetGroupedSection(environment: environment)
-
-		case let .custom(provider):
-			layoutSection = provider(environment)
-		}
+		let layoutSection = section.layout.provider(environment)
 
 		// Content insets
 		if section.contentInsets != .zero {
@@ -279,70 +265,6 @@ final class DeclarativeCollectionView: UIView, Updatable {
 		return layoutSection
 	}
 
-	// MARK: - Section Layout Factories
-
-	private func makeVerticalSection() -> NSCollectionLayoutSection {
-		let itemSize = NSCollectionLayoutSize(
-			widthDimension: .fractionalWidth(1.0),
-			heightDimension: .estimated(44)
-		)
-		let item = NSCollectionLayoutItem(layoutSize: itemSize)
-
-		let groupSize = NSCollectionLayoutSize(
-			widthDimension: .fractionalWidth(1.0),
-			heightDimension: .estimated(44)
-		)
-		let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitems: [item])
-
-		return NSCollectionLayoutSection(group: group)
-	}
-
-	private func makeHorizontalSection(itemWidth: CGFloat, itemHeight: CGFloat) -> NSCollectionLayoutSection {
-		let itemSize = NSCollectionLayoutSize(
-			widthDimension: .absolute(itemWidth),
-			heightDimension: .absolute(itemHeight)
-		)
-		let item = NSCollectionLayoutItem(layoutSize: itemSize)
-
-		let groupSize = NSCollectionLayoutSize(
-			widthDimension: .absolute(itemWidth),
-			heightDimension: .absolute(itemHeight)
-		)
-		let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-
-		let section = NSCollectionLayoutSection(group: group)
-		section.orthogonalScrollingBehavior = .continuous
-		section.interGroupSpacing = 8
-		return section
-	}
-
-	private func makeInsetGroupedSection(
-		environment: NSCollectionLayoutEnvironment
-	) -> NSCollectionLayoutSection {
-		let itemSize = NSCollectionLayoutSize(
-			widthDimension: .fractionalWidth(1.0),
-			heightDimension: .estimated(44)
-		)
-		let item = NSCollectionLayoutItem(layoutSize: itemSize)
-
-		let groupSize = NSCollectionLayoutSize(
-			widthDimension: .fractionalWidth(1.0),
-			heightDimension: .estimated(44)
-		)
-		let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitems: [item])
-
-		let layoutSection = NSCollectionLayoutSection(group: group)
-		layoutSection.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)
-
-		let backgroundItem = NSCollectionLayoutDecorationItem.background(
-			elementKind: SectionBackgroundDecorationView.elementKind
-		)
-		backgroundItem.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
-		layoutSection.decorationItems = [backgroundItem]
-
-		return layoutSection
-	}
-
 	private static func makeDefaultSection() -> NSCollectionLayoutSection {
 		let itemSize = NSCollectionLayoutSize(
 			widthDimension: .fractionalWidth(1.0),
@@ -385,6 +307,12 @@ final class DeclarativeCollectionView: UIView, Updatable {
 		}
 
 		dataSource.apply(snapshot, animatingDifferences: animated)
+
+		// Reconfigure existing items so cells pick up updated models
+		var reconfigureSnapshot = dataSource.snapshot()
+		let existingItems = reconfigureSnapshot.itemIdentifiers
+		reconfigureSnapshot.reconfigureItems(existingItems)
+		dataSource.apply(reconfigureSnapshot, animatingDifferences: false)
 	}
 }
 // MARK: - UICollectionViewDelegate

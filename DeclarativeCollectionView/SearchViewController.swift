@@ -8,6 +8,7 @@ import UIKit
 protocol SearchDisplayLogic: AnyObject {
 	@MainActor func displayLoading()
 	@MainActor func displayItems(_ viewModel: Search.Load.ViewModel)
+	@MainActor func didTapCarouselItem(_ item: SearchItem, inSection sectionID: SectionID)
 }
 
 final class SearchViewController: UIViewController, SearchDisplayLogic {
@@ -108,5 +109,12 @@ final class SearchViewController: UIViewController, SearchDisplayLogic {
 		spinner.stopAnimating()
 		declarativeCollectionView.isHidden = false
 		sectionsSource.send(viewModel.sections)
+	}
+
+	func didTapCarouselItem(_ item: SearchItem, inSection sectionID: SectionID) {
+		interactor?.removeItem(Search.RemoveItem.Request(
+			sectionID: sectionID,
+			itemID: StableItemID(item.id)
+		))
 	}
 }

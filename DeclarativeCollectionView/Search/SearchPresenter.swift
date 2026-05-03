@@ -63,7 +63,7 @@ final class SearchPresenter: SearchPresentationLogic {
 
 				let section = CollectionSection(
 					id: baseID,
-					layout: .custom({ environment in
+					layout: SectionLayout({ environment in
 						let availableWidth = environment.container.contentSize.width - sideInset * 2
 						let cellWidth = (availableWidth - interItemSpacing) / 2.0
 						let cellHeight = cellWidth * 1.5
@@ -155,9 +155,13 @@ final class SearchPresenter: SearchPresentationLogic {
 						SearchCardViewable(model: item)
 					}
 					if !entry.carouselItems.isEmpty {
+						let sectionID = SectionID(baseID)
 						CarouselViewable(model: CarouselModel(
 							id: "\(baseID)-carousel",
-							items: entry.carouselItems
+							items: entry.carouselItems,
+							onItemTap: { [weak self] item in
+								self?.viewController?.didTapCarouselItem(item, inSection: sectionID)
+							}
 						))
 					}
 					for item in entry.bottomGridItems {
