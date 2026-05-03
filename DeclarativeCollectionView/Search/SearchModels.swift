@@ -1,0 +1,79 @@
+//
+//  SearchModels.swift
+//  DeclarativeCollectionView
+//
+
+import UIKit
+
+// MARK: - Mock Data Models
+
+struct SearchItem: Identifiable {
+	let id: String
+	let title: String
+	let subtitle: String
+	let color: UIColor
+}
+
+// MARK: - Response Models
+
+/// A standalone item displayed without any module wrapper.
+struct StandaloneEntry {
+	let item: SearchItem
+}
+
+/// A single item wrapped in a module (decoration background).
+struct ModuleEntry {
+	let title: String
+	let item: SearchItem
+}
+
+/// Multiple items grouped inside a single module.
+struct GroupedModuleEntry {
+	let title: String
+	var items: [SearchItem]
+}
+
+/// A composite section with decoration containing:
+/// top grid (2 columns) → horizontal carousel → bottom grid (2 columns).
+struct CompositeEntry {
+	let title: String
+	var topGridItems: [SearchItem]
+	var carouselItems: [SearchItem]
+	var bottomGridItems: [SearchItem]
+}
+
+/// Top-level response element — represents one "block" in the search response.
+enum SearchResponseBlock {
+	case standalone(StandaloneEntry)
+	case module(ModuleEntry)
+	case groupedModule(GroupedModuleEntry)
+	case composite(CompositeEntry)
+}
+
+// MARK: - VIP Models
+
+enum Search {
+
+	enum Load {
+		struct Request {}
+
+		struct Response {
+			let blocks: [SearchResponseBlock]
+		}
+
+		struct ViewModel {
+			let sections: [CollectionSection]
+		}
+	}
+
+	enum RemoveItem {
+		struct Request {
+			let sectionID: SectionID
+			let itemID: StableItemID
+		}
+	}
+
+	enum AddSection {
+		struct Request {}
+	}
+}

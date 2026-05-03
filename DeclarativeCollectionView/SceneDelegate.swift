@@ -13,10 +13,29 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
 
 	func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
-		// Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-		// If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-		// This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
-		guard let _ = (scene as? UIWindowScene) else { return }
+		guard let windowScene = (scene as? UIWindowScene) else { return }
+
+		let window = UIWindow(windowScene: windowScene)
+
+		let homeVC = HomeViewController()
+		homeVC.tabBarItem = UITabBarItem(title: "Home", image: UIImage(systemName: "house"), selectedImage: UIImage(systemName: "house.fill"))
+
+		let searchVC = SearchViewController()
+		searchVC.tabBarItem = UITabBarItem(title: "Search", image: UIImage(systemName: "magnifyingglass"), selectedImage: nil)
+
+		let profileVC = ProfileViewController()
+		profileVC.tabBarItem = UITabBarItem(title: "Profile", image: UIImage(systemName: "person"), selectedImage: UIImage(systemName: "person.fill"))
+
+		let tabBarController = UITabBarController()
+		tabBarController.viewControllers = [
+			UINavigationController(rootViewController: homeVC),
+			UINavigationController(rootViewController: searchVC),
+			UINavigationController(rootViewController: profileVC)
+		]
+
+		window.rootViewController = tabBarController
+		window.makeKeyAndVisible()
+		self.window = window
 	}
 
 	func sceneDidDisconnect(_ scene: UIScene) {
