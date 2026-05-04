@@ -52,6 +52,17 @@ final class SearchPresenter: SearchPresentationLogic {
 				.header(SectionHeaderViewable(model: .init(id: sectionID, title: entry.title.uppercased())))
 				sections.append(section)
 
+			case .expandable(let entry):
+				let section = CollectionSection(id: entry.id, layout: .vertical) {
+					ExpandableViewable(model: ExpandableView.Model(
+						id: entry.id,
+						title: entry.title,
+						color: entry.color,
+						isExpanded: entry.isExpanded
+					))
+				}
+				sections.append(section)
+
 			case .composite(let entry):
 				let baseID = "composite-\(entry.title.lowercased().replacingOccurrences(of: " ", with: "-"))"
 				let sideInset: CGFloat = 16

@@ -81,6 +81,9 @@ final class SearchInteractor: SearchBusinessLogic {
 					presenter?.presentItems(Search.Load.Response(blocks: blocks))
 					return
 				}
+
+			case .expandable:
+				break
 			}
 		}
 	}
@@ -132,6 +135,14 @@ final class SearchInteractor: SearchBusinessLogic {
 				SearchItem(id: "r1", title: "Recent 1", subtitle: "In grouped module", color: .systemCyan),
 				SearchItem(id: "r2", title: "Recent 2", subtitle: "In grouped module", color: .systemMint)
 			])),
+
+			// Expandable cell — toggles height on tap via Updatable
+			.expandable(ExpandableEntry(
+				id: "exp1",
+				title: "Tap to Expand",
+				color: .systemIndigo,
+				isExpanded: false
+			)),
 
 			// Composite section: grid → carousel → grid, with decoration
 			.composite(CompositeEntry(

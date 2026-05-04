@@ -42,12 +42,21 @@ struct CompositeEntry {
 	var bottomGridItems: [SearchItem]
 }
 
+/// A single expandable cell that toggles its height on tap via Updatable.
+struct ExpandableEntry {
+	let id: String
+	let title: String
+	let color: UIColor
+	var isExpanded: Bool
+}
+
 /// Top-level response element — represents one "block" in the search response.
 enum SearchResponseBlock {
 	case standalone(StandaloneEntry)
 	case module(ModuleEntry)
 	case groupedModule(GroupedModuleEntry)
 	case composite(CompositeEntry)
+	case expandable(ExpandableEntry)
 }
 
 // MARK: - VIP Models

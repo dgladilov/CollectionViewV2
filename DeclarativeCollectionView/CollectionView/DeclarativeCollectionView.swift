@@ -85,9 +85,13 @@ final class DeclarativeCollectionView: UIView, Updatable {
 		apply(sections: builder(), animated: animated)
 	}
 
-	/// Updatable conformance.
+	/// Updatable conformance — invalidates layout so cells can resize themselves.
 	func update(animated: Bool) {
-		apply(sections: currentSections, animated: animated)
+		if animated {
+			collectionView.performBatchUpdates(nil)
+		} else {
+			collectionView.collectionViewLayout.invalidateLayout()
+		}
 	}
 
 	// MARK: - Factory
