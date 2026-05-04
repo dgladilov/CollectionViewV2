@@ -133,7 +133,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 	private func setupCellAndSupplementaryProviders() {
 		let cellRegistration = UICollectionView.CellRegistration<HostCell, StableItemID> { [weak self] cell, _, itemID in
 			guard let self, let item = self.itemLookup[itemID] else { return }
-			cell.configure(with: item)
+			cell.configure(with: item, updatable: self)
 		}
 
 		dataSource = UICollectionViewDiffableDataSource<SectionID, StableItemID>(
@@ -148,7 +148,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 			guard let self,
 				  indexPath.section < self.currentSections.count,
 				  let header = self.currentSections[indexPath.section].header else { return }
-			supplementaryView.configure(with: header)
+			supplementaryView.configure(with: header, updatable: self)
 		}
 
 		let footerRegistration = UICollectionView.SupplementaryRegistration<SupplementaryHostView>(
@@ -157,7 +157,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 			guard let self,
 				  indexPath.section < self.currentSections.count,
 				  let footer = self.currentSections[indexPath.section].footer else { return }
-			supplementaryView.configure(with: footer)
+			supplementaryView.configure(with: footer, updatable: self)
 		}
 
 		dataSource.supplementaryViewProvider = { collectionView, kind, indexPath in

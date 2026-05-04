@@ -13,9 +13,10 @@ final class SupplementaryHostView: UICollectionReusableView {
 
 	private var hostedView: UIView?
 
-	func configure(with item: AnySupplementaryItem) {
+	func configure(with item: AnySupplementaryItem, updatable: Updatable? = nil) {
 		if let existing = hostedView {
 			item.updateView(existing)
+			item.setUpdatable(existing, updatable: updatable)
 			return
 		}
 
@@ -30,6 +31,7 @@ final class SupplementaryHostView: UICollectionReusableView {
 			view.bottomAnchor.constraint(equalTo: bottomAnchor)
 		])
 
+		item.setUpdatable(view, updatable: updatable)
 		hostedView = view
 	}
 
