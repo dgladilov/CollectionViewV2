@@ -65,22 +65,6 @@ final class SearchItemView: UIView, ModelableView {
 	}
 }
 
-// MARK: - SearchItemViewable
-
-struct SearchItemViewable: CollectionViewable {
-	typealias ViewType = SearchItemView
-
-	let model: SearchItem
-
-	var preferredSize: CGSize {
-		CGSize(width: UIView.noIntrinsicMetric, height: 48)
-	}
-
-	func makeView() -> SearchItemView {
-		SearchItemView(model)
-	}
-}
-
 // MARK: - SectionHeaderView
 
 /// A simple section header with a title label.

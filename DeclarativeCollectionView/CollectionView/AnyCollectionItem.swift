@@ -30,15 +30,9 @@ struct StableItemID: Hashable, Sendable {
 	}
 }
 
-// MARK: - CollectionViewable
-
-/// A Viewable whose Model is Identifiable — required for collection view items
-/// so that DiffableDataSource can track identity across updates.
-protocol CollectionViewable: Viewable where ViewType: ModelableView, ViewType.Model: Identifiable {}
-
 // MARK: - AnyCollectionItem
 
-/// Type-erased wrapper for any CollectionViewable.
+/// Type-erased wrapper for any CollectionItemable.
 struct AnyCollectionItem {
 
 	let stableID: StableItemID
@@ -49,14 +43,18 @@ struct AnyCollectionItem {
 	private let _updateView: @MainActor (UIView) -> Void
 	private let _setUpdatable: @MainActor (UIView, Updatable?) -> Void
 
+	/// Called when the item is tapped.
+	let onTap: (@MainActor () -> Void)?
+	/// Called when the cell becomes visible on screen.
+	let onDisplay: (@MainActor () -> Void)?
+
 	@MainActor
-	init<V: CollectionViewable>(_ viewable: V) {
-		let view = viewable.makeView()
-		self.stableID = StableItemID(view.model.id)
-		self.preferredSize = viewable.preferredSize
+	init<V: CollectionItemable>(_ model: V) {
+		self.stableID = StableItemID(model.id)
+		self.preferredSize = model.preferredSize
 		self.viewTypeId = ObjectIdentifier(V.ViewType.self)
 
-		let viewableCopy = viewable
+		let viewableCopy = model
 		self._makeView = {
 			viewableCopy.makeView()
 		}
@@ -69,6 +67,9 @@ struct AnyCollectionItem {
 			guard let typedView = existingView as? V.ViewType else { return }
 			typedView.updatable = updatable
 		}
+		
+		self.onTap = model.onTap
+		self.onDisplay = model.onDisplay
 	}
 
 	@MainActor

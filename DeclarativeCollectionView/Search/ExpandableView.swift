@@ -6,17 +6,40 @@
 import UIKit
 
 // MARK: - ExpandableView
+struct ExpandableModel: Viewable, CollectionItemable {
+	let id: String
+	let title: String
+	let color: UIColor
+	var isExpanded: Bool
+	
+	typealias ViewType = ExpandableView
+
+	var preferredSize: CGSize {
+		let height: CGFloat = isExpanded ? 120 : 48
+		return CGSize(width: UIView.noIntrinsicMetric, height: height)
+	}
+
+	func makeView() -> ExpandableView {
+		ExpandableView(self)
+	}
+	
+	var onTap: (@MainActor () -> Void)? {
+		{
+			print("onTap: \(id)")
+		}
+	}
+	
+	var onDisplay: (@MainActor () -> Void)? {
+		{
+			print("onDisplay: \(id)")
+		}
+	}
+}
 
 final class ExpandableView: UIView, ModelableView {
 
-	struct Model: Identifiable {
-		let id: String
-		let title: String
-		let color: UIColor
-		var isExpanded: Bool
-	}
 
-	var model: Model {
+	var model: ExpandableModel {
 		didSet { updateUI() }
 	}
 
@@ -28,7 +51,7 @@ final class ExpandableView: UIView, ModelableView {
 	private let detailLabel = UILabel()
 	private var heightConstraint: NSLayoutConstraint!
 
-	required init(_ model: Model) {
+	required init(_ model: ExpandableModel) {
 		self.model = model
 		super.init(frame: .zero)
 		setupUI()
@@ -105,22 +128,5 @@ final class ExpandableView: UIView, ModelableView {
 
 		detailLabel.isHidden = !model.isExpanded
 		heightConstraint.constant = model.isExpanded ? 120 : 48
-	}
-}
-
-// MARK: - ExpandableViewable
-
-struct ExpandableViewable: CollectionViewable {
-	typealias ViewType = ExpandableView
-
-	let model: ExpandableView.Model
-
-	var preferredSize: CGSize {
-		let height: CGFloat = model.isExpanded ? 120 : 48
-		return CGSize(width: UIView.noIntrinsicMetric, height: height)
-	}
-
-	func makeView() -> ExpandableView {
-		ExpandableView(model)
 	}
 }

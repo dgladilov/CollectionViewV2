@@ -47,8 +47,12 @@ struct CollectionItemBuilder {
 		components.flatMap { $0 }
 	}
 
-	static func buildExpression<V: CollectionViewable>(_ expression: V) -> [AnyCollectionItem] {
+	static func buildExpression<V: CollectionItemable>(_ expression: V) -> [AnyCollectionItem] {
 		[AnyCollectionItem(expression)]
+	}
+
+	static func buildExpression<V: CollectionItemable>(_ expression: [V]) -> [AnyCollectionItem] {
+		expression.map { AnyCollectionItem($0) }
 	}
 
 	static func buildExpression(_ expression: AnyCollectionItem) -> [AnyCollectionItem] {

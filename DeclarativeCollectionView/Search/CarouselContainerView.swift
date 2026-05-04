@@ -7,10 +7,32 @@ import UIKit
 
 // MARK: - CarouselModel
 
-struct CarouselModel: Identifiable {
+struct CarouselModel: Viewable, CollectionItemable {
 	let id: String
 	let items: [SearchItem]
 	var onItemTap: ((SearchItem) -> Void)?
+	
+	typealias ViewType = CarouselContainerView
+
+	var preferredSize: CGSize {
+		CGSize(width: UIView.noIntrinsicMetric, height: 120)
+	}
+
+	func makeView() -> CarouselContainerView {
+		CarouselContainerView(self)
+	}
+	
+	var onTap: (@MainActor () -> Void)? {
+		{
+			print("onTap: \(id)")
+		}
+	}
+	
+	var onDisplay: (@MainActor () -> Void)? {
+		{
+			print("onDisplay: \(id)")
+		}
+	}
 }
 
 // MARK: - CarouselContainerView
@@ -114,21 +136,5 @@ extension CarouselContainerView: UICollectionViewDelegate {
 		collectionView.deselectItem(at: indexPath, animated: true)
 		guard indexPath.item < model.items.count else { return }
 		model.onItemTap?(model.items[indexPath.item])
-	}
-}
-
-// MARK: - CarouselViewable
-
-struct CarouselViewable: CollectionViewable {
-	typealias ViewType = CarouselContainerView
-
-	let model: CarouselModel
-
-	var preferredSize: CGSize {
-		CGSize(width: UIView.noIntrinsicMetric, height: 120)
-	}
-
-	func makeView() -> CarouselContainerView {
-		CarouselContainerView(model)
 	}
 }

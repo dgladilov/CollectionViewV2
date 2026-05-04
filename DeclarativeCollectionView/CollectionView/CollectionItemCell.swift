@@ -1,5 +1,5 @@
 //
-//  HostCell.swift
+//  CollectionItemCell.swift
 //  DeclarativeCollectionView
 //
 //  Created by Дмитрий on 30.04.2026.
@@ -9,7 +9,7 @@ import UIKit
 
 /// A generic UICollectionViewCell that hosts any ModelableView created by a Viewable.
 /// The hosted view is created on first configure and reused (updated) on subsequent calls.
-final class HostCell: UICollectionViewCell {
+final class CollectionItemCell: UICollectionViewCell {
 
 	private var hostedView: UIView?
 	private var currentViewTypeId: ObjectIdentifier?

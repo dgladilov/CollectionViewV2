@@ -72,19 +72,3 @@ final class SearchCardView: UIView, ModelableView {
 		subtitleLabel.text = model.subtitle
 	}
 }
-
-// MARK: - SearchCardViewable
-
-struct SearchCardViewable: CollectionViewable {
-	typealias ViewType = SearchCardView
-
-	let model: SearchItem
-
-	var preferredSize: CGSize {
-		CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
-	}
-
-	func makeView() -> SearchCardView {
-		SearchCardView(model)
-	}
-}

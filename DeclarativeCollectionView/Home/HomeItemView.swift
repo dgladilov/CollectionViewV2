@@ -7,12 +7,18 @@ import UIKit
 
 // MARK: - HomeItem
 
-struct HomeItem: Identifiable {
+struct HomeItem: Identifiable, Viewable, CollectionItemable {
 	let id: String
 	var title: String
 	var subtitle: String
 	var color: UIColor
 	var details: String?
+	
+	typealias ViewType = HomeItemView
+
+	func makeView() -> HomeItemView {
+		HomeItemView(self)
+	}
 }
 
 // MARK: - HomeItemView
@@ -89,17 +95,5 @@ final class HomeItemView: UIView, ModelableView {
 			detailsLabel.text = nil
 			detailsLabel.isHidden = true
 		}
-	}
-}
-
-// MARK: - HomeItemViewable
-
-struct HomeItemViewable: CollectionViewable {
-	typealias ViewType = HomeItemView
-
-	let model: HomeItem
-
-	func makeView() -> HomeItemView {
-		HomeItemView(model)
 	}
 }

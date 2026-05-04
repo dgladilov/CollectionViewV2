@@ -28,7 +28,7 @@ final class SearchPresenter: SearchPresentationLogic {
 			case .standalone(let entry):
 				// Standalone: vertical section, no decoration
 				let section = CollectionSection(id: entry.item.id, layout: .plain) {
-					SearchItemViewable(model: entry.item)
+					entry.item
 				}
 				sections.append(section)
 
@@ -36,7 +36,7 @@ final class SearchPresenter: SearchPresentationLogic {
 				// Single item wrapped in a module with decoration
 				let sectionID = "module-\(entry.item.id)"
 				let section = CollectionSection(id: sectionID, layout: .insetGrouped) {
-					SearchItemViewable(model: entry.item)
+					entry.item
 				}
 				.header(SectionHeaderViewable(model: .init(id: sectionID, title: entry.title.uppercased())))
 				sections.append(section)
@@ -45,21 +45,19 @@ final class SearchPresenter: SearchPresentationLogic {
 				// Multiple items in one module with shared decoration
 				let sectionID = "group-\(entry.title.lowercased().replacingOccurrences(of: " ", with: "-"))"
 				let section = CollectionSection(id: sectionID, layout: .insetGrouped) {
-					for item in entry.items {
-						SearchItemViewable(model: item)
-					}
+					entry.items
 				}
 				.header(SectionHeaderViewable(model: .init(id: sectionID, title: entry.title.uppercased())))
 				sections.append(section)
 
 			case .expandable(let entry):
 				let section = CollectionSection(id: entry.id, layout: .plain) {
-					ExpandableViewable(model: ExpandableView.Model(
+					ExpandableModel(
 						id: entry.id,
 						title: entry.title,
 						color: entry.color,
 						isExpanded: entry.isExpanded
-					))
+					)
 				}
 				sections.append(section)
 
@@ -162,22 +160,18 @@ final class SearchPresenter: SearchPresentationLogic {
 					}),
 					decoration: .background(color: .secondarySystemBackground, cornerRadius: 12)
 				) {
-					for item in entry.topGridItems {
-						SearchCardViewable(model: item)
-					}
+					entry.topGridItems
 					if !entry.carouselItems.isEmpty {
 						let sectionID = SectionID(baseID)
-						CarouselViewable(model: CarouselModel(
+						CarouselModel(
 							id: "\(baseID)-carousel",
 							items: entry.carouselItems,
 							onItemTap: { [weak self] item in
 								self?.viewController?.didTapCarouselItem(item, inSection: sectionID)
 							}
-						))
+						)
 					}
-					for item in entry.bottomGridItems {
-						SearchCardViewable(model: item)
-					}
+					entry.bottomGridItems
 				}
 				.header(SectionHeaderViewable(model: .init(id: baseID, title: entry.title.uppercased())))
 				sections.append(section)

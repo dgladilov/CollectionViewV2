@@ -116,9 +116,7 @@ final class HomeViewModel {
 	private func rebuildSections() {
 		let collectionSections: [CollectionSection] = sections.map { sectionData in
 			CollectionSection(id: sectionData.id, layout: .insetGrouped) {
-				for item in sectionData.items {
-					HomeItemViewable(model: item)
-				}
+				sectionData.items
 			}
 			.header(SectionHeaderViewable(model: .init(id: sectionData.id, title: sectionData.title.uppercased())))
 		}

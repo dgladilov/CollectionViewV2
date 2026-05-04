@@ -22,6 +22,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 	private var itemLookup: [StableItemID: AnyCollectionItem] = [:]
 	private var streamTask: Task<Void, Never>?
 	private var animateUpdates = true
+	private var displayedItems: Set<StableItemID> = []
 
 	/// Called when an item is tapped. Provides section ID, item stable ID, and index path.
 	var onItemTap: ((SectionID, StableItemID, IndexPath) -> Void)?
@@ -110,7 +111,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 		cv.backgroundColor = .systemBackground
 
 		// Placeholder cell registration — replaced in setupCellAndSupplementaryProviders()
-		let cellRegistration = UICollectionView.CellRegistration<HostCell, StableItemID> { _, _, _ in }
+		let cellRegistration = UICollectionView.CellRegistration<CollectionItemCell, StableItemID> { _, _, _ in }
 
 		let ds = UICollectionViewDiffableDataSource<SectionID, StableItemID>(
 			collectionView: cv
@@ -135,7 +136,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 	}
 
 	private func setupCellAndSupplementaryProviders() {
-		let cellRegistration = UICollectionView.CellRegistration<HostCell, StableItemID> { [weak self] cell, _, itemID in
+		let cellRegistration = UICollectionView.CellRegistration<CollectionItemCell, StableItemID> { [weak self] cell, _, itemID in
 			guard let self, let item = self.itemLookup[itemID] else { return }
 			cell.configure(with: item, updatable: self)
 		}
@@ -266,6 +267,24 @@ final class DeclarativeCollectionView: UIView, Updatable {
 			layoutSection.decorationItems = [backgroundItem]
 		}
 
+		// onDisplay via visibleItemsInvalidationHandler (works for both vertical and orthogonal scroll)
+		let sectionItems = section.items
+		let hasOnDisplay = sectionItems.contains { $0.onDisplay != nil }
+		if hasOnDisplay {
+			layoutSection.visibleItemsInvalidationHandler = { [weak self] visibleItems, _, _ in
+				guard let self else { return }
+				for visibleItem in visibleItems {
+					guard visibleItem.representedElementCategory == .cell else { continue }
+					let idx = visibleItem.indexPath.item
+					guard idx < sectionItems.count else { continue }
+					let item = sectionItems[idx]
+					guard item.onDisplay != nil, !self.displayedItems.contains(item.stableID) else { continue }
+					self.displayedItems.insert(item.stableID)
+					item.onDisplay?()
+				}
+			}
+		}
+
 		return layoutSection
 	}
 
@@ -283,6 +302,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 
 	private func apply(sections: [CollectionSection], animated: Bool) {
 		currentSections = sections
+		displayedItems.removeAll()
 
 		// Rebuild item lookup from model identity
 		var lookup: [StableItemID: AnyCollectionItem] = [:]
@@ -330,6 +350,12 @@ extension DeclarativeCollectionView: UICollectionViewDelegate {
 		let section = currentSections[indexPath.section]
 		guard indexPath.item < section.items.count else { return }
 		let item = section.items[indexPath.item]
-		onItemTap?(section.id, item.stableID, indexPath)
+
+		if let itemOnTap = item.onTap {
+			itemOnTap()
+		} else {
+			onItemTap?(section.id, item.stableID, indexPath)
+		}
 	}
+
 }

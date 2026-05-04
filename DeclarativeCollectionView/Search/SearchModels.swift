@@ -7,11 +7,33 @@ import UIKit
 
 // MARK: - Mock Data Models
 
-struct SearchItem: Identifiable {
+struct SearchItem: Identifiable, Viewable, CollectionItemable {
 	let id: String
 	let title: String
 	let subtitle: String
 	let color: UIColor
+	
+	typealias ViewType = SearchCardView
+
+	var preferredSize: CGSize {
+		CGSize(width: UIView.noIntrinsicMetric, height: UIView.noIntrinsicMetric)
+	}
+
+	func makeView() -> SearchCardView {
+		SearchCardView(self)
+	}
+	
+	var onTap: (@MainActor () -> Void)? {
+		{
+			print("onTap: \(id)")
+		}
+	}
+	
+	var onDisplay: (@MainActor () -> Void)? {
+		{
+			print("onDisplay: \(id)")
+		}
+	}
 }
 
 // MARK: - Response Models
