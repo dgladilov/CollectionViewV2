@@ -1,5 +1,5 @@
 //
-//  DeclarativeCollectionView.swift
+//  CollectionView.swift
 //  DeclarativeCollectionView
 //
 //  Created by Дмитрий on 30.04.2026.
@@ -12,7 +12,7 @@ import UIKit
 /// Supports two modes:
 /// - **Reactive**: pass an `Observable<[CollectionSection]>` — the collection auto-updates on changes.
 /// - **Manual**: call `reload { ... }` with a section builder when data changes.
-final class DeclarativeCollectionView: UIView, Updatable {
+final class CollectionView: UIView, Updatable {
 
 	// MARK: - Properties
 
@@ -22,7 +22,8 @@ final class DeclarativeCollectionView: UIView, Updatable {
 	private var itemLookup: [StableItemID: AnyCollectionItem] = [:]
 	private var streamTask: Task<Void, Never>?
 	private var animateUpdates = true
-	private var displayedItems: Set<StableItemID> = []
+	/// Tracks currently visible items per section to detect appearance/disappearance transitions.
+	private var visibleItemsBySection: [Int: Set<Int>] = [:]
 
 	/// Called when an item is tapped. Provides section ID, item stable ID, and index path.
 	var onItemTap: ((SectionID, StableItemID, IndexPath) -> Void)?
@@ -271,16 +272,21 @@ final class DeclarativeCollectionView: UIView, Updatable {
 		let sectionItems = section.items
 		let hasOnDisplay = sectionItems.contains { $0.onDisplay != nil }
 		if hasOnDisplay {
+			let sectionIndex = currentSections.firstIndex(where: { $0.id == section.id }) ?? 0
 			layoutSection.visibleItemsInvalidationHandler = { [weak self] visibleItems, _, _ in
 				guard let self else { return }
-				for visibleItem in visibleItems {
-					guard visibleItem.representedElementCategory == .cell else { continue }
-					let idx = visibleItem.indexPath.item
+				let currentlyVisible = Set(
+					visibleItems
+						.filter { $0.representedElementCategory == .cell }
+						.map(\.indexPath.item)
+				)
+				let previouslyVisible = self.visibleItemsBySection[sectionIndex] ?? []
+				let newlyAppeared = currentlyVisible.subtracting(previouslyVisible)
+				self.visibleItemsBySection[sectionIndex] = currentlyVisible
+
+				for idx in newlyAppeared {
 					guard idx < sectionItems.count else { continue }
-					let item = sectionItems[idx]
-					guard item.onDisplay != nil, !self.displayedItems.contains(item.stableID) else { continue }
-					self.displayedItems.insert(item.stableID)
-					item.onDisplay?()
+					sectionItems[idx].onDisplay?()
 				}
 			}
 		}
@@ -302,7 +308,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 
 	private func apply(sections: [CollectionSection], animated: Bool) {
 		currentSections = sections
-		displayedItems.removeAll()
+		visibleItemsBySection.removeAll()
 
 		// Rebuild item lookup from model identity
 		var lookup: [StableItemID: AnyCollectionItem] = [:]
@@ -342,7 +348,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 }
 // MARK: - UICollectionViewDelegate
 
-extension DeclarativeCollectionView: UICollectionViewDelegate {
+extension CollectionView: UICollectionViewDelegate {
 
 	func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
 		collectionView.deselectItem(at: indexPath, animated: true)

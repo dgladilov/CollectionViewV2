@@ -10,7 +10,7 @@ import UIKit
 final class HomeViewController: UIViewController {
 
 	private let viewModel = HomeViewModel()
-	private lazy var collectionView = DeclarativeCollectionView(source: viewModel.sectionsSource)
+	private lazy var collectionView = CollectionView(source: viewModel.sectionsSource)
 	private let toolbar = UIToolbar()
 
 	// MARK: - Lifecycle

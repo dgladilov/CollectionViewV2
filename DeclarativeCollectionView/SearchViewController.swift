@@ -16,7 +16,7 @@ final class SearchViewController: UIViewController, SearchDisplayLogic {
 	var interactor: SearchBusinessLogic?
 
 	private let sectionsSource = SectionsSource()
-	private lazy var declarativeCollectionView = DeclarativeCollectionView(source: sectionsSource)
+	private lazy var declarativeCollectionView = CollectionView(source: sectionsSource)
 
 	private let spinner: UIActivityIndicatorView = {
 		let indicator = UIActivityIndicatorView(style: .large)
