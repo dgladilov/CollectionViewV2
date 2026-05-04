@@ -27,7 +27,7 @@ final class SearchPresenter: SearchPresentationLogic {
 			switch block {
 			case .standalone(let entry):
 				// Standalone: vertical section, no decoration
-				let section = CollectionSection(id: entry.item.id, layout: .vertical) {
+				let section = CollectionSection(id: entry.item.id, layout: .plain) {
 					SearchItemViewable(model: entry.item)
 				}
 				sections.append(section)
@@ -53,7 +53,7 @@ final class SearchPresenter: SearchPresentationLogic {
 				sections.append(section)
 
 			case .expandable(let entry):
-				let section = CollectionSection(id: entry.id, layout: .vertical) {
+				let section = CollectionSection(id: entry.id, layout: .plain) {
 					ExpandableViewable(model: ExpandableView.Model(
 						id: entry.id,
 						title: entry.title,
@@ -74,7 +74,7 @@ final class SearchPresenter: SearchPresentationLogic {
 
 				let section = CollectionSection(
 					id: baseID,
-					layout: SectionLayout({ environment in
+					layout: .custom({ environment in
 						let availableWidth = environment.container.contentSize.width - sideInset * 2
 						let cellWidth = (availableWidth - interItemSpacing) / 2.0
 						let cellHeight = cellWidth * 1.5

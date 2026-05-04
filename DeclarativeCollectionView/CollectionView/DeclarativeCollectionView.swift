@@ -198,7 +198,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 		for section: CollectionSection,
 		environment: NSCollectionLayoutEnvironment
 	) -> NSCollectionLayoutSection {
-		let layoutSection = section.layout.provider(environment)
+		let layoutSection = section.layout.makeLayoutSection(environment: environment)
 
 		// Content insets
 		if section.contentInsets != .zero {

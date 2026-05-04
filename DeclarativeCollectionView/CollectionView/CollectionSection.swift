@@ -9,117 +9,47 @@ import UIKit
 
 // MARK: - SectionLayout
 
-/// A generic layout descriptor for a collection section.
-/// Wraps a closure that produces an `NSCollectionLayoutSection` from the layout environment.
-/// Use the static factories (`.vertical`, `.horizontal(...)`, `.insetGrouped`, etc.) or provide
-/// a fully custom closure via `init`.
-struct SectionLayout {
+/// Layout descriptor for a collection section based on `UICollectionLayoutListConfiguration.Appearance`.
+/// For fully custom layouts, use `.custom(...)`.
+enum SectionLayout {
+	/// Plain list (UICollectionLayoutListConfiguration.Appearance.plain)
+	case plain
+	/// Inset grouped list (UICollectionLayoutListConfiguration.Appearance.insetGrouped)
+	case insetGrouped
+	/// Grouped list (UICollectionLayoutListConfiguration.Appearance.grouped)
+	case grouped
+	/// Sidebar (UICollectionLayoutListConfiguration.Appearance.sidebar)
+	case sidebar
+	/// Sidebar plain (UICollectionLayoutListConfiguration.Appearance.sidebarPlain)
+	case sidebarPlain
+	/// Custom layout built from a closure
+	case custom((NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection)
 
-	let provider: (NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection
+	/// Resolves the enum case into an `NSCollectionLayoutSection`.
+	func makeLayoutSection(environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
+		switch self {
+		case .plain:
+			let config = UICollectionLayoutListConfiguration(appearance: .plain)
+			return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
 
-	init(_ provider: @escaping (NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection) {
-		self.provider = provider
-	}
+		case .insetGrouped:
+			let config = UICollectionLayoutListConfiguration(appearance: .insetGrouped)
+			return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
 
-	// MARK: - Static Factories
+		case .grouped:
+			let config = UICollectionLayoutListConfiguration(appearance: .grouped)
+			return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
 
-	/// Vertical list — one item per row, full width, estimated height.
-	static var vertical: SectionLayout {
-		SectionLayout { _ in
-			let itemSize = NSCollectionLayoutSize(
-				widthDimension: .fractionalWidth(1.0),
-				heightDimension: .estimated(44)
-			)
-			let item = NSCollectionLayoutItem(layoutSize: itemSize)
+		case .sidebar:
+			let config = UICollectionLayoutListConfiguration(appearance: .sidebar)
+			return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
 
-			let groupSize = NSCollectionLayoutSize(
-				widthDimension: .fractionalWidth(1.0),
-				heightDimension: .estimated(44)
-			)
-			let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitems: [item])
+		case .sidebarPlain:
+			let config = UICollectionLayoutListConfiguration(appearance: .sidebarPlain)
+			return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
 
-			return NSCollectionLayoutSection(group: group)
-		}
-	}
-
-	/// Horizontal carousel with orthogonal scrolling.
-	static func horizontal(itemWidth: CGFloat, itemHeight: CGFloat, spacing: CGFloat = 8) -> SectionLayout {
-		SectionLayout { _ in
-			let itemSize = NSCollectionLayoutSize(
-				widthDimension: .absolute(itemWidth),
-				heightDimension: .absolute(itemHeight)
-			)
-			let item = NSCollectionLayoutItem(layoutSize: itemSize)
-
-			let groupSize = NSCollectionLayoutSize(
-				widthDimension: .absolute(itemWidth),
-				heightDimension: .absolute(itemHeight)
-			)
-			let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: [item])
-
-			let section = NSCollectionLayoutSection(group: group)
-			section.orthogonalScrollingBehavior = .continuous
-			section.interGroupSpacing = spacing
-			return section
-		}
-	}
-
-	/// Inset grouped style (like UITableView .insetGrouped) with decoration background.
-	static var insetGrouped: SectionLayout {
-		SectionLayout { _ in
-			let itemSize = NSCollectionLayoutSize(
-				widthDimension: .fractionalWidth(1.0),
-				heightDimension: .estimated(44)
-			)
-			let item = NSCollectionLayoutItem(layoutSize: itemSize)
-
-			let groupSize = NSCollectionLayoutSize(
-				widthDimension: .fractionalWidth(1.0),
-				heightDimension: .estimated(44)
-			)
-			let group = NSCollectionLayoutGroup.vertical(layoutSize: groupSize, subitems: [item])
-
-			let section = NSCollectionLayoutSection(group: group)
-			section.contentInsets = NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16)
-
-			let backgroundItem = NSCollectionLayoutDecorationItem.background(
-				elementKind: SectionBackgroundDecorationView.elementKind
-			)
-			backgroundItem.contentInsets = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
-			section.decorationItems = [backgroundItem]
-
-			return section
-		}
-	}
-
-	/// Vertical grid — items arranged in columns with a given count and aspect ratio.
-	static func grid(columns: Int, aspectRatio: CGFloat, spacing: CGFloat = 8, sideInset: CGFloat = 16) -> SectionLayout {
-		SectionLayout { environment in
-			let availableWidth = environment.container.contentSize.width - sideInset * 2
-			let totalSpacing = CGFloat(columns - 1) * spacing
-			let itemWidth = (availableWidth - totalSpacing) / CGFloat(columns)
-			let itemHeight = itemWidth * aspectRatio
-
-			let itemSize = NSCollectionLayoutSize(
-				widthDimension: .absolute(itemWidth),
-				heightDimension: .absolute(itemHeight)
-			)
-			let item = NSCollectionLayoutItem(layoutSize: itemSize)
-
-			let groupSize = NSCollectionLayoutSize(
-				widthDimension: .fractionalWidth(1.0),
-				heightDimension: .absolute(itemHeight)
-			)
-			let subitems = Array(repeating: item, count: columns)
-			let group = NSCollectionLayoutGroup.horizontal(layoutSize: groupSize, subitems: subitems)
-			group.interItemSpacing = .fixed(spacing)
-
-			let section = NSCollectionLayoutSection(group: group)
-			section.interGroupSpacing = spacing
-			section.contentInsets = NSDirectionalEdgeInsets(
-				top: 0, leading: sideInset, bottom: 0, trailing: sideInset
-			)
-			return section
+		case .custom(let provider):
+			return provider(environment)
 		}
 	}
 }
