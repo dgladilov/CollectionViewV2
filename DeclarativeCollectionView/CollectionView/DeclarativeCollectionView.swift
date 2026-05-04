@@ -301,7 +301,7 @@ final class DeclarativeCollectionView: UIView, Updatable {
 		)
 		collectionView.setCollectionViewLayout(newLayout, animated: animated)
 
-		// Build and apply snapshot using stable model IDs
+		// Build snapshot using stable model IDs
 		var snapshot = NSDiffableDataSourceSnapshot<SectionID, StableItemID>()
 
 		for section in sections {
@@ -310,13 +310,14 @@ final class DeclarativeCollectionView: UIView, Updatable {
 			snapshot.appendItems(itemIDs, toSection: section.id)
 		}
 
-		dataSource.apply(snapshot, animatingDifferences: animated)
+		// Mark all existing items for reconfiguration so cells pick up updated models and resize
+		let previousItems = Set(dataSource.snapshot().itemIdentifiers)
+		let itemsToReconfigure = snapshot.itemIdentifiers.filter { previousItems.contains($0) }
+		if !itemsToReconfigure.isEmpty {
+			snapshot.reconfigureItems(itemsToReconfigure)
+		}
 
-		// Reconfigure existing items so cells pick up updated models
-		var reconfigureSnapshot = dataSource.snapshot()
-		let existingItems = reconfigureSnapshot.itemIdentifiers
-		reconfigureSnapshot.reconfigureItems(existingItems)
-		dataSource.apply(reconfigureSnapshot, animatingDifferences: false)
+		dataSource.apply(snapshot, animatingDifferences: animated)
 	}
 }
 // MARK: - UICollectionViewDelegate
