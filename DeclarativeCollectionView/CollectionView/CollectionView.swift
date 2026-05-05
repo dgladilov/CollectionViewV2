@@ -16,146 +16,178 @@ protocol DecorationProvider: AnyObject {
 	func decorationStyle(forSection index: Int) -> DecorationStyle
 }
 
-/// A declarative wrapper around UICollectionView with CompositionalLayout and DiffableDataSource.
+/// A declarative UICollectionView with CompositionalLayout and DiffableDataSource.
 ///
-/// Supports two modes:
-/// - **Reactive**: pass an `Observable<[CollectionSection]>` — the collection auto-updates on changes.
-/// - **Manual**: call `reload { ... }` with a section builder when data changes.
-final class CollectionView: UIView, Updatable {
+/// Owns its `SectionsSource` internally. Use `send`, `append`, `insert`, `remove`, `update`
+/// and other methods to mutate sections. The collection auto-updates on changes.
+final class CollectionView: UICollectionView, Updatable {
 
 	// MARK: - Properties
 
-	private(set) var collectionView: UICollectionView
-	private var dataSource: UICollectionViewDiffableDataSource<SectionID, ItemID>
-	private var currentSections: [CollectionSection] = []
+	private let sectionsSource = SectionsSource()
+	private var diffableDataSource: UICollectionViewDiffableDataSource<SectionID, ItemID>!
 	private var itemLookup: [ItemID: AnyCollectionItem] = [:]
 	private var streamTask: Task<Void, Never>?
 	private var animateUpdates = true
 	/// Tracks currently visible items per section to detect appearance/disappearance transitions.
 	private var visibleItemsBySection: [Int: Set<Int>] = [:]
 
-	/// Called when an item is tapped. Provides section ID, item stable ID, and index path.
-	var onItemTap: ((SectionID, ItemID, IndexPath) -> Void)?
-
 	// MARK: - Initializers
 
-	/// Reactive mode: the collection view auto-updates when sections are pushed to the source.
-	init(source: SectionsSource) {
-		let (cv, ds) = Self.makeCollectionViewAndDataSource()
-		self.collectionView = cv
-		self.dataSource = ds
-		super.init(frame: .zero)
-		embedCollectionView()
-		installSectionProviderLayout()
-		setupCellAndSupplementaryProviders()
-
-		// Apply current sections immediately if the source already has data
-		if !source.current.isEmpty {
-			apply(sections: source.current, animated: false)
-		}
-
-		streamTask = Task { [weak self, stream = source.stream] in
-			for await sections in stream {
-				self?.apply(sections: sections, animated: self?.animateUpdates ?? true)
-			}
-		}
+	override init(frame: CGRect, collectionViewLayout layout: UICollectionViewLayout) {
+		super.init(frame: frame, collectionViewLayout: layout)
+		commonInit()
 	}
 
-	/// Manual mode: use `reload { ... }` to push new sections.
-	override init(frame: CGRect) {
-		let (cv, ds) = Self.makeCollectionViewAndDataSource()
-		self.collectionView = cv
-		self.dataSource = ds
-		super.init(frame: frame)
-		embedCollectionView()
-		installSectionProviderLayout()
-		setupCellAndSupplementaryProviders()
+	init() {
+		let layout = Self.makeInitialLayout()
+		super.init(frame: .zero, collectionViewLayout: layout)
+		commonInit()
 	}
 
 	/// Convenience: create with an initial set of sections.
 	convenience init(@CollectionSectionBuilder _ builder: () -> [CollectionSection]) {
-		self.init(frame: .zero)
-		apply(sections: builder(), animated: false)
+		self.init()
+		send(builder())
 	}
 
 	required init?(coder: NSCoder) {
-		let (cv, ds) = Self.makeCollectionViewAndDataSource()
-		self.collectionView = cv
-		self.dataSource = ds
 		super.init(coder: coder)
-		embedCollectionView()
-		installSectionProviderLayout()
-		setupCellAndSupplementaryProviders()
+		commonInit()
 	}
 
 	deinit {
 		streamTask?.cancel()
 	}
 
-	// MARK: - Public API
+	// MARK: - Common Init
+
+	private func commonInit() {
+		translatesAutoresizingMaskIntoConstraints = false
+		backgroundColor = .systemBackground
+		delegate = self
+
+		setupDataSource()
+		installSectionProviderLayout()
+
+		streamTask = Task { [weak self, stream = sectionsSource.stream] in
+			for await _ in stream {
+				guard let self else { return }
+				self.apply(sections: self.sectionsSource.current, animated: self.animateUpdates)
+			}
+		}
+	}
+
+	// MARK: - Public API (Sections)
+
+	/// Current sections snapshot.
+	var sections: [CollectionSection] { sectionsSource.current }
+
+	/// Replace all sections at once.
+	func send(_ sections: [CollectionSection]) {
+		sectionsSource.send(sections)
+	}
+
+	/// Replace all sections using the declarative builder.
+	func send(@CollectionSectionBuilder _ builder: () -> [CollectionSection]) {
+		sectionsSource.send(builder)
+	}
+
+	/// Append a section to the end.
+	func append(_ section: CollectionSection) {
+		sectionsSource.append(section)
+	}
+
+	/// Append multiple sections to the end.
+	func append(contentsOf sections: [CollectionSection]) {
+		sectionsSource.append(contentsOf: sections)
+	}
+
+	/// Insert a section at the given index.
+	func insert(_ section: CollectionSection, at index: Int) {
+		sectionsSource.insert(section, at: index)
+	}
+
+	/// Insert a section after the section with the given id.
+	func insert(_ section: CollectionSection, after sectionID: String) {
+		sectionsSource.insert(section, after: sectionID)
+	}
+
+	/// Insert a section before the section with the given id.
+	func insert(_ section: CollectionSection, before sectionID: String) {
+		sectionsSource.insert(section, before: sectionID)
+	}
+
+	/// Remove the section with the given id.
+	@discardableResult
+	func remove(sectionID: String) -> CollectionSection? {
+		sectionsSource.remove(sectionID: sectionID)
+	}
+
+	/// Remove the section at the given index.
+	@discardableResult
+	func remove(at index: Int) -> CollectionSection {
+		sectionsSource.remove(at: index)
+	}
+
+	/// Remove all sections.
+	func removeAll() {
+		sectionsSource.removeAll()
+	}
+
+	/// Replace the section with the matching id.
+	func update(_ section: CollectionSection) {
+		sectionsSource.update(section)
+	}
+
+	/// Mutate the section with the given id in-place.
+	func update(sectionID: String, _ transform: (inout CollectionSection) -> Void) {
+		sectionsSource.update(sectionID: sectionID, transform)
+	}
+
+	/// Perform multiple mutations in a batch, emitting only one update at the end.
+	func batch(_ mutations: (CollectionView) -> Void) {
+		sectionsSource.batch { _ in
+			mutations(self)
+		}
+	}
+
+	/// Returns the section with the given id, or nil.
+	func section(id: String) -> CollectionSection? {
+		sectionsSource.section(id: id)
+	}
+
+	/// Returns the index of the section with the given id, or nil.
+	func index(of sectionID: String) -> Int? {
+		sectionsSource.index(of: sectionID)
+	}
 
 	/// Manual reload with a declarative section builder.
 	func reload(animated: Bool = true, @CollectionSectionBuilder _ builder: () -> [CollectionSection]) {
-		apply(sections: builder(), animated: animated)
+		animateUpdates = animated
+		send(builder())
+		animateUpdates = true
 	}
 
 	/// Updatable conformance — invalidates layout so cells can resize themselves.
 	func update(animated: Bool) {
 		if animated {
-			collectionView.performBatchUpdates(nil)
+			performBatchUpdates(nil)
 		} else {
-			collectionView.collectionViewLayout.invalidateLayout()
+			collectionViewLayout.invalidateLayout()
 		}
 	}
 
-	// MARK: - Factory
+	// MARK: - Data Source Setup
 
-	private static func makeCollectionViewAndDataSource()
-		-> (UICollectionView, UICollectionViewDiffableDataSource<SectionID, ItemID>)
-	{
-		let layout = makeCompositionalLayout()
-		layout.register(
-			SectionBackgroundDecorationView.self,
-			forDecorationViewOfKind: SectionBackgroundDecorationView.elementKind
-		)
-
-		let cv = UICollectionView(frame: .zero, collectionViewLayout: layout)
-		cv.translatesAutoresizingMaskIntoConstraints = false
-		cv.backgroundColor = .systemBackground
-
-		// Placeholder cell registration — replaced in setupCellAndSupplementaryProviders()
-		let cellRegistration = UICollectionView.CellRegistration<CollectionItemCell, ItemID> { _, _, _ in }
-
-		let ds = UICollectionViewDiffableDataSource<SectionID, ItemID>(
-			collectionView: cv
-		) { collectionView, indexPath, itemID in
-			collectionView.dequeueConfiguredReusableCell(using: cellRegistration, for: indexPath, item: itemID)
-		}
-
-		return (cv, ds)
-	}
-
-	// MARK: - Setup
-
-	private func embedCollectionView() {
-		addSubview(collectionView)
-		collectionView.delegate = self
-		NSLayoutConstraint.activate([
-			collectionView.topAnchor.constraint(equalTo: topAnchor),
-			collectionView.leadingAnchor.constraint(equalTo: leadingAnchor),
-			collectionView.trailingAnchor.constraint(equalTo: trailingAnchor),
-			collectionView.bottomAnchor.constraint(equalTo: bottomAnchor)
-		])
-	}
-
-	private func setupCellAndSupplementaryProviders() {
+	private func setupDataSource() {
 		let cellRegistration = UICollectionView.CellRegistration<CollectionItemCell, ItemID> { [weak self] cell, _, itemID in
 			guard let self, let item = self.itemLookup[itemID] else { return }
 			cell.configure(with: item, updatable: self)
 		}
 
-		dataSource = UICollectionViewDiffableDataSource<SectionID, ItemID>(
-			collectionView: collectionView
+		diffableDataSource = UICollectionViewDiffableDataSource<SectionID, ItemID>(
+			collectionView: self
 		) { collectionView, indexPath, itemID in
 			collectionView.dequeueConfiguredReusableCell(using: cellRegistration, for: indexPath, item: itemID)
 		}
@@ -164,8 +196,8 @@ final class CollectionView: UIView, Updatable {
 			elementKind: UICollectionView.elementKindSectionHeader
 		) { [weak self] supplementaryView, _, indexPath in
 			guard let self,
-				  indexPath.section < self.currentSections.count,
-				  let header = self.currentSections[indexPath.section].header else { return }
+				  indexPath.section < self.sectionsSource.current.count,
+				  let header = self.sectionsSource.current[indexPath.section].header else { return }
 			supplementaryView.configure(with: header, updatable: self)
 		}
 
@@ -173,12 +205,12 @@ final class CollectionView: UIView, Updatable {
 			elementKind: UICollectionView.elementKindSectionFooter
 		) { [weak self] supplementaryView, _, indexPath in
 			guard let self,
-				  indexPath.section < self.currentSections.count,
-				  let footer = self.currentSections[indexPath.section].footer else { return }
+				  indexPath.section < self.sectionsSource.current.count,
+				  let footer = self.sectionsSource.current[indexPath.section].footer else { return }
 			supplementaryView.configure(with: footer, updatable: self)
 		}
 
-		dataSource.supplementaryViewProvider = { collectionView, kind, indexPath in
+		diffableDataSource.supplementaryViewProvider = { collectionView, kind, indexPath in
 			switch kind {
 			case UICollectionView.elementKindSectionHeader:
 				return collectionView.dequeueConfiguredReusableSupplementary(using: headerRegistration, for: indexPath)
@@ -192,27 +224,32 @@ final class CollectionView: UIView, Updatable {
 
 	// MARK: - Layout
 
-	private static func makeCompositionalLayout() -> UICollectionViewCompositionalLayout {
-		UICollectionViewCompositionalLayout { _, _ in
+	private static func makeInitialLayout() -> UICollectionViewCompositionalLayout {
+		let layout = UICollectionViewCompositionalLayout { _, _ in
 			makeDefaultSection()
 		}
+		layout.register(
+			SectionBackgroundDecorationView.self,
+			forDecorationViewOfKind: SectionBackgroundDecorationView.elementKind
+		)
+		return layout
 	}
 
-	/// Installs the real section-provider layout that reads from `currentSections`.
-	/// Called once after `super.init()`. The layout persists for the view's lifetime.
+	/// Installs the real section-provider layout that reads from `sectionsSource.current`.
+	/// Called once after init. The layout persists for the view's lifetime.
 	private func installSectionProviderLayout() {
 		let layout = UICollectionViewCompositionalLayout { [weak self] sectionIndex, environment in
-			guard let self, sectionIndex < self.currentSections.count else {
+			guard let self, sectionIndex < self.sectionsSource.current.count else {
 				return Self.makeDefaultSection()
 			}
-			let section = self.currentSections[sectionIndex]
+			let section = self.sectionsSource.current[sectionIndex]
 			return self.makeLayoutSection(for: section, environment: environment)
 		}
 		layout.register(
 			SectionBackgroundDecorationView.self,
 			forDecorationViewOfKind: SectionBackgroundDecorationView.elementKind
 		)
-		collectionView.setCollectionViewLayout(layout, animated: false)
+		setCollectionViewLayout(layout, animated: false)
 	}
 
 	private func makeLayoutSection(
@@ -291,7 +328,7 @@ final class CollectionView: UIView, Updatable {
 		let sectionItems = section.items
 		let hasOnDisplay = sectionItems.contains { $0.onDisplay != nil }
 		if hasOnDisplay {
-			let sectionIndex = currentSections.firstIndex(where: { $0.id == section.id }) ?? 0
+			let sectionIndex = sectionsSource.current.firstIndex(where: { $0.id == section.id }) ?? 0
 			layoutSection.visibleItemsInvalidationHandler = { [weak self] visibleItems, _, _ in
 				guard let self else { return }
 				let currentlyVisible = Set(
@@ -327,11 +364,10 @@ final class CollectionView: UIView, Updatable {
 
 	private func apply(sections: [CollectionSection], animated: Bool) {
 		// Detect if the section structure changed (added/removed/reordered sections)
-		let previousSectionIDs = currentSections.map(\.id)
+		let previousSectionIDs = diffableDataSource.snapshot().sectionIdentifiers
 		let newSectionIDs = sections.map(\.id)
 		let sectionsStructureChanged = previousSectionIDs != newSectionIDs
 
-		currentSections = sections
 		visibleItemsBySection.removeAll()
 
 		// Rebuild item lookup from model identity
@@ -353,47 +389,42 @@ final class CollectionView: UIView, Updatable {
 		}
 
 		// Mark all existing items for reconfiguration so cells pick up updated models and resize
-		let previousItems = Set(dataSource.snapshot().itemIdentifiers)
+		let previousItems = Set(diffableDataSource.snapshot().itemIdentifiers)
 		let itemsToReconfigure = snapshot.itemIdentifiers.filter { previousItems.contains($0) }
 		if !itemsToReconfigure.isEmpty {
 			snapshot.reconfigureItems(itemsToReconfigure)
 		}
 
-		dataSource.apply(snapshot, animatingDifferences: animated)
+		diffableDataSource.apply(snapshot, animatingDifferences: animated)
 
 		// Invalidate layout only when section structure changed,
 		// so the section provider re-evaluates layouts for new/reordered sections
 		if sectionsStructureChanged {
-			collectionView.collectionViewLayout.invalidateLayout()
+			collectionViewLayout.invalidateLayout()
 		}
 	}
 }
+
 // MARK: - UICollectionViewDelegate
 
 extension CollectionView: UICollectionViewDelegate {
 
 	func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
 		collectionView.deselectItem(at: indexPath, animated: true)
-		guard indexPath.section < currentSections.count else { return }
-		let section = currentSections[indexPath.section]
+		guard indexPath.section < sectionsSource.current.count else { return }
+		let section = sectionsSource.current[indexPath.section]
 		guard indexPath.item < section.items.count else { return }
 		let item = section.items[indexPath.item]
-
-		if let itemOnTap = item.onTap {
-			itemOnTap()
-		} else {
-			onItemTap?(section.id, item.stableID, indexPath)
-		}
+		item.onTap?()
 	}
-
 }
 
 // MARK: - DecorationProvider Conformance
 
 extension CollectionView: DecorationProvider {
 	func decorationStyle(forSection index: Int) -> DecorationStyle {
-		guard index < currentSections.count else { return .none }
-		return currentSections[index].decoration
+		guard index < sectionsSource.current.count else { return .none }
+		return sectionsSource.current[index].decoration
 	}
 }
 

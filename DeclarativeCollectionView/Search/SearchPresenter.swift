@@ -26,28 +26,25 @@ final class SearchPresenter: SearchPresentationLogic {
 		for block in response.blocks {
 			switch block {
 			case .standalone(let entry):
-				// Standalone: vertical section, no decoration
-				let section = CollectionSection(id: entry.item.id, layout: .plain) {
-					entry.item
-				}
+				let sectionID = SectionID(entry.item.id)
+				let item = makeItem(entry.item, sectionID: sectionID)
+				let section = CollectionSection(id: entry.item.id, layout: .plain, items: [item])
 				sections.append(section)
 
 			case .module(let entry):
-				// Single item wrapped in a module with decoration
-				let sectionID = "module-\(entry.item.id)"
-				let section = CollectionSection(id: sectionID, layout: .insetGrouped) {
-					entry.item
-				}
-				.header(SectionHeaderViewable(model: .init(id: sectionID, title: entry.title.uppercased())))
+				let sectionIDString = "module-\(entry.item.id)"
+				let sectionID = SectionID(sectionIDString)
+				let item = makeItem(entry.item, sectionID: sectionID)
+				let section = CollectionSection(id: sectionIDString, layout: .insetGrouped, items: [item])
+					.header(SectionHeaderViewable(model: .init(id: sectionIDString, title: entry.title.uppercased())))
 				sections.append(section)
 
 			case .groupedModule(let entry):
-				// Multiple items in one module with shared decoration
-				let sectionID = "group-\(entry.title.lowercased().replacingOccurrences(of: " ", with: "-"))"
-				let section = CollectionSection(id: sectionID, layout: .insetGrouped) {
-					entry.items
-				}
-				.header(SectionHeaderViewable(model: .init(id: sectionID, title: entry.title.uppercased())))
+				let sectionIDString = "group-\(entry.title.lowercased().replacingOccurrences(of: " ", with: "-"))"
+				let sectionID = SectionID(sectionIDString)
+				let items = entry.items.map { makeItem($0, sectionID: sectionID) }
+				let section = CollectionSection(id: sectionIDString, layout: .insetGrouped, items: items)
+					.header(SectionHeaderViewable(model: .init(id: sectionIDString, title: entry.title.uppercased())))
 				sections.append(section)
 
 			case .expandable(let entry):
@@ -63,12 +60,29 @@ final class SearchPresenter: SearchPresentationLogic {
 
 			case .composite(let entry):
 				let baseID = "composite-\(entry.title.lowercased().replacingOccurrences(of: " ", with: "-"))"
+				let sectionID = SectionID(baseID)
 				let sideInset: CGFloat = 16
 				let interItemSpacing: CGFloat = 8
 				let topCount = entry.topGridItems.count
 				let hasCarousel = !entry.carouselItems.isEmpty
 				let bottomCount = entry.bottomGridItems.count
 				let carouselHeight: CGFloat = 120
+
+				let topItems = entry.topGridItems.map { makeItem($0, sectionID: sectionID) }
+				let bottomItems = entry.bottomGridItems.map { makeItem($0, sectionID: sectionID) }
+
+				var allItems: [AnyCollectionItem] = topItems
+				if !entry.carouselItems.isEmpty {
+					let carouselItem = AnyCollectionItem(CarouselModel(
+						id: "\(baseID)-carousel",
+						items: entry.carouselItems,
+						onItemTap: { [weak self] item in
+							self?.viewController?.didTapCarouselItem(item, inSection: sectionID)
+						}
+					))
+					allItems.append(carouselItem)
+				}
+				allItems.append(contentsOf: bottomItems)
 
 				let section = CollectionSection(
 					id: baseID,
@@ -164,26 +178,24 @@ final class SearchPresenter: SearchPresentationLogic {
 					view.layer.cornerRadius = 12
 					view.layer.masksToBounds = true
 					return view
-				}
-				) {
-					entry.topGridItems
-					if !entry.carouselItems.isEmpty {
-						let sectionID = SectionID(baseID)
-						CarouselModel(
-							id: "\(baseID)-carousel",
-							items: entry.carouselItems,
-							onItemTap: { [weak self] item in
-								self?.viewController?.didTapCarouselItem(item, inSection: sectionID)
-							}
-						)
-					}
-					entry.bottomGridItems
-				}
+				},
+					items: allItems
+				)
 				.header(SectionHeaderViewable(model: .init(id: baseID, title: entry.title.uppercased())))
 				sections.append(section)
 			}
 		}
 
 		viewController?.displayItems(Search.Load.ViewModel(sections: sections))
+	}
+
+	// MARK: - Private
+
+	@MainActor
+	private func makeItem(_ searchItem: SearchItem, sectionID: SectionID) -> AnyCollectionItem {
+		let itemID = ItemID(searchItem.id)
+		return AnyCollectionItem(searchItem).onTap { [weak self] in
+			self?.viewController?.didTapItem(sectionID: sectionID, itemID: itemID)
+		}
 	}
 }

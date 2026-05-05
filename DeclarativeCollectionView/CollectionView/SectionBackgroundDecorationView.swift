@@ -73,13 +73,6 @@ final class SectionBackgroundDecorationView: UICollectionReusableView {
 	}
 
 	private func findDecorationProvider() -> DecorationProvider? {
-		var current: UIView? = superview
-		while let view = current {
-			if let provider = view.superview as? DecorationProvider {
-				return provider
-			}
-			current = view.superview
-		}
-		return nil
+		superview as? DecorationProvider
 	}
 }

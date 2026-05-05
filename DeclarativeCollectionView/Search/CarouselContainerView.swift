@@ -7,6 +7,7 @@ import UIKit
 
 // MARK: - CarouselModel
 
+@MainActor
 struct CarouselModel: Viewable, CollectionItemable {
 	let id: String
 	let items: [SearchItem]

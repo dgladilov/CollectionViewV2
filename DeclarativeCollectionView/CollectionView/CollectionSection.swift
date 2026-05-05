@@ -11,7 +11,7 @@ import UIKit
 
 /// Layout descriptor for a collection section based on `UICollectionLayoutListConfiguration.Appearance`.
 /// For fully custom layouts, use `.custom(...)`.
-enum SectionLayout {
+enum SectionLayout: Sendable {
 	/// Plain list (UICollectionLayoutListConfiguration.Appearance.plain)
 	case plain
 	/// Inset grouped list (UICollectionLayoutListConfiguration.Appearance.insetGrouped)
@@ -23,10 +23,10 @@ enum SectionLayout {
 	/// Sidebar plain (UICollectionLayoutListConfiguration.Appearance.sidebarPlain)
 	case sidebarPlain
 	/// Custom layout built from a closure
-	case custom((NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection)
+	case custom(@MainActor @Sendable (NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection)
 
 	/// Resolves the enum case into an `NSCollectionLayoutSection`.
-	func makeLayoutSection(environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
+	@MainActor func makeLayoutSection(environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
 		switch self {
 		case .plain:
 			let config = UICollectionLayoutListConfiguration(appearance: .plain)
@@ -63,7 +63,7 @@ enum DecorationStyle {
 
 // MARK: - CollectionSection
 
-struct CollectionSection {
+struct CollectionSection: Sendable {
 
 	let id: SectionID
 	let layout: SectionLayout
@@ -74,8 +74,7 @@ struct CollectionSection {
 	var decoration: DecorationStyle
 	var contentInsets: NSDirectionalEdgeInsets
 
-	@MainActor
-	init(
+	@MainActor init(
 		id: String,
 		layout: SectionLayout,
 		decoration: DecorationStyle = .none,
@@ -85,6 +84,23 @@ struct CollectionSection {
 		self.id = SectionID(id)
 		self.layout = layout
 		self.items = items()
+		self.header = nil
+		self.footer = nil
+		self.supplementaries = []
+		self.decoration = decoration
+		self.contentInsets = contentInsets
+	}
+
+	@MainActor init(
+		id: String,
+		layout: SectionLayout,
+		decoration: DecorationStyle = .none,
+		contentInsets: NSDirectionalEdgeInsets = .zero,
+		items: [AnyCollectionItem]
+	) {
+		self.id = SectionID(id)
+		self.layout = layout
+		self.items = items
 		self.header = nil
 		self.footer = nil
 		self.supplementaries = []

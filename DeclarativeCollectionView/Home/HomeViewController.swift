@@ -10,7 +10,7 @@ import UIKit
 final class HomeViewController: UIViewController {
 
 	private let viewModel = HomeViewModel()
-	private lazy var collectionView = CollectionView(source: viewModel.sectionsSource)
+	private lazy var collectionView = CollectionView()
 	private let toolbar = UIToolbar()
 
 	// MARK: - Lifecycle
@@ -27,7 +27,6 @@ final class HomeViewController: UIViewController {
 	// MARK: - Setup
 
 	private func setupCollectionView() {
-		collectionView.translatesAutoresizingMaskIntoConstraints = false
 		view.addSubview(collectionView)
 
 		NSLayoutConstraint.activate([
@@ -37,8 +36,8 @@ final class HomeViewController: UIViewController {
 			collectionView.bottomAnchor.constraint(equalTo: toolbar.topAnchor)
 		])
 
-		collectionView.onItemTap = { [weak self] sectionID, itemID, _ in
-			self?.viewModel.removeItem(sectionID: sectionID, itemID: itemID)
+		viewModel.onSectionsChanged = { [weak self] sections in
+			self?.collectionView.send(sections)
 		}
 	}
 

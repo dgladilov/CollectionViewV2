@@ -44,9 +44,9 @@ struct AnyCollectionItem {
 	private let _setUpdatable: @MainActor (UIView, Updatable?) -> Void
 
 	/// Called when the item is tapped.
-	let onTap: (@MainActor () -> Void)?
+	private(set) var onTap: (@MainActor () -> Void)?
 	/// Called when the cell becomes visible on screen.
-	let onDisplay: (@MainActor () -> Void)?
+	private(set) var onDisplay: (@MainActor () -> Void)?
 
 	@MainActor
 	init<V: CollectionItemable>(_ model: V) {
@@ -85,6 +85,20 @@ struct AnyCollectionItem {
 	@MainActor
 	func setUpdatable(_ view: UIView, updatable: Updatable?) {
 		_setUpdatable(view, updatable)
+	}
+
+	// MARK: - Fluent API
+
+	func onTap(_ handler: @escaping @MainActor () -> Void) -> AnyCollectionItem {
+		var copy = self
+		copy.onTap = handler
+		return copy
+	}
+
+	func onDisplay(_ handler: @escaping @MainActor () -> Void) -> AnyCollectionItem {
+		var copy = self
+		copy.onDisplay = handler
+		return copy
 	}
 }
 

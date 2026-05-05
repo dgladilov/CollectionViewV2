@@ -8,9 +8,9 @@ import UIKit
 @MainActor
 final class HomeViewModel {
 
-	// MARK: - Reactive output
+	// MARK: - Output
 
-	let sectionsSource = SectionsSource()
+	var onSectionsChanged: (([CollectionSection]) -> Void)?
 
 	// MARK: - State
 
@@ -115,11 +115,16 @@ final class HomeViewModel {
 
 	private func rebuildSections() {
 		let collectionSections: [CollectionSection] = sections.map { sectionData in
-			CollectionSection(id: sectionData.id, layout: .insetGrouped) {
-				sectionData.items
+			let sectionID = SectionID(sectionData.id)
+			let items: [AnyCollectionItem] = sectionData.items.map { item in
+				let itemID = ItemID(item.id)
+				return AnyCollectionItem(item).onTap { [weak self] in
+					self?.removeItem(sectionID: sectionID, itemID: itemID)
+				}
 			}
-			.header(SectionHeaderViewable(model: .init(id: sectionData.id, title: sectionData.title.uppercased())))
+			return CollectionSection(id: sectionData.id, layout: .insetGrouped, items: items)
+				.header(SectionHeaderViewable(model: .init(id: sectionData.id, title: sectionData.title.uppercased())))
 		}
-		sectionsSource.send(collectionSections)
+		onSectionsChanged?(collectionSections)
 	}
 }

@@ -8,6 +8,7 @@ import UIKit
 protocol SearchDisplayLogic: AnyObject {
 	@MainActor func displayLoading()
 	@MainActor func displayItems(_ viewModel: Search.Load.ViewModel)
+	@MainActor func didTapItem(sectionID: SectionID, itemID: ItemID)
 	@MainActor func didTapCarouselItem(_ item: SearchItem, inSection sectionID: SectionID)
 }
 
@@ -15,8 +16,7 @@ final class SearchViewController: UIViewController, SearchDisplayLogic {
 
 	var interactor: SearchBusinessLogic?
 
-	private let sectionsSource = SectionsSource()
-	private lazy var declarativeCollectionView = CollectionView(source: sectionsSource)
+	private lazy var declarativeCollectionView = CollectionView()
 
 	private let spinner: UIActivityIndicatorView = {
 		let indicator = UIActivityIndicatorView(style: .large)
@@ -44,7 +44,6 @@ final class SearchViewController: UIViewController, SearchDisplayLogic {
 
 		setupNavigationBar()
 		setupSubviews()
-		setupCollectionHandler()
 
 		interactor?.loadItems(Search.Load.Request())
 		displayLoading()
@@ -71,7 +70,6 @@ final class SearchViewController: UIViewController, SearchDisplayLogic {
 	}
 
 	private func setupSubviews() {
-		declarativeCollectionView.translatesAutoresizingMaskIntoConstraints = false
 		view.addSubview(declarativeCollectionView)
 		view.addSubview(spinner)
 
@@ -84,12 +82,6 @@ final class SearchViewController: UIViewController, SearchDisplayLogic {
 			spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
 			spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor)
 		])
-	}
-
-	private func setupCollectionHandler() {
-		declarativeCollectionView.onItemTap = { [weak self] sectionID, itemID, _ in
-			self?.interactor?.removeItem(Search.RemoveItem.Request(sectionID: sectionID, itemID: itemID))
-		}
 	}
 
 	// MARK: - Actions
@@ -108,7 +100,11 @@ final class SearchViewController: UIViewController, SearchDisplayLogic {
 	func displayItems(_ viewModel: Search.Load.ViewModel) {
 		spinner.stopAnimating()
 		declarativeCollectionView.isHidden = false
-		sectionsSource.send(viewModel.sections)
+		declarativeCollectionView.send(viewModel.sections)
+	}
+
+	func didTapItem(sectionID: SectionID, itemID: ItemID) {
+		interactor?.removeItem(Search.RemoveItem.Request(sectionID: sectionID, itemID: itemID))
 	}
 
 	func didTapCarouselItem(_ item: SearchItem, inSection sectionID: SectionID) {

@@ -9,14 +9,14 @@ import UIKit
 /// so that DiffableDataSource can track identity across updates.
 protocol CollectionItemable: Identifiable, Viewable {
 	
-	var onTap: (@MainActor () -> Void)? { get }
+	var onTap: (@MainActor @Sendable () -> Void)? { get }
 	
-	var onDisplay: (@MainActor () -> Void)? { get }
+	var onDisplay: (@MainActor @Sendable () -> Void)? { get }
 }
 
 extension CollectionItemable {
 	
-	var onTap: (@MainActor () -> Void)? { nil }
+	var onTap: (@MainActor @Sendable () -> Void)? { nil }
 	
-	var onDisplay: (@MainActor () -> Void)? { nil }
+	var onDisplay: (@MainActor @Sendable () -> Void)? { nil }
 }
