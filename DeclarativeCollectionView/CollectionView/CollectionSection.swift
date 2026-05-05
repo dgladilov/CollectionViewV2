@@ -56,31 +56,9 @@ enum SectionLayout {
 
 // MARK: - DecorationStyle
 
-enum DecorationStyle: Hashable {
+enum DecorationStyle {
 	case none
-	case background(color: UIColor, cornerRadius: CGFloat)
-
-	static func == (lhs: DecorationStyle, rhs: DecorationStyle) -> Bool {
-		switch (lhs, rhs) {
-		case (.none, .none):
-			return true
-		case let (.background(lc, lr), .background(rc, rr)):
-			return lc == rc && lr == rr
-		default:
-			return false
-		}
-	}
-
-	func hash(into hasher: inout Hasher) {
-		switch self {
-		case .none:
-			hasher.combine(0)
-		case let .background(color, radius):
-			hasher.combine(1)
-			hasher.combine(color)
-			hasher.combine(radius)
-		}
-	}
+	case custom(@MainActor () -> UIView)
 }
 
 // MARK: - CollectionSection

@@ -158,7 +158,13 @@ final class SearchPresenter: SearchPresentationLogic {
 						)
 						return layoutSection
 					}),
-					decoration: .background(color: .secondarySystemBackground, cornerRadius: 12)
+					decoration: .custom {
+					let view = UIView()
+					view.backgroundColor = .secondarySystemBackground
+					view.layer.cornerRadius = 12
+					view.layer.masksToBounds = true
+					return view
+				}
 				) {
 					entry.topGridItems
 					if !entry.carouselItems.isEmpty {

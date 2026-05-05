@@ -37,6 +37,7 @@ final class CollectionView: UIView, Updatable {
 		self.dataSource = ds
 		super.init(frame: .zero)
 		embedCollectionView()
+		installSectionProviderLayout()
 		setupCellAndSupplementaryProviders()
 
 		// Apply current sections immediately if the source already has data
@@ -58,6 +59,7 @@ final class CollectionView: UIView, Updatable {
 		self.dataSource = ds
 		super.init(frame: frame)
 		embedCollectionView()
+		installSectionProviderLayout()
 		setupCellAndSupplementaryProviders()
 	}
 
@@ -73,11 +75,16 @@ final class CollectionView: UIView, Updatable {
 		self.dataSource = ds
 		super.init(coder: coder)
 		embedCollectionView()
+		installSectionProviderLayout()
 		setupCellAndSupplementaryProviders()
 	}
 
 	deinit {
 		streamTask?.cancel()
+		let cv = collectionView
+		MainActor.assumeIsolated {
+			DecorationConfigStore.shared.clearConfigs(for: cv)
+		}
 	}
 
 	// MARK: - Public API
@@ -186,14 +193,21 @@ final class CollectionView: UIView, Updatable {
 		}
 	}
 
-	private func createSectionProvider() -> UICollectionViewCompositionalLayoutSectionProvider {
-		{ [weak self] sectionIndex, environment in
+	/// Installs the real section-provider layout that reads from `currentSections`.
+	/// Called once after `super.init()`. The layout persists for the view's lifetime.
+	private func installSectionProviderLayout() {
+		let layout = UICollectionViewCompositionalLayout { [weak self] sectionIndex, environment in
 			guard let self, sectionIndex < self.currentSections.count else {
 				return Self.makeDefaultSection()
 			}
 			let section = self.currentSections[sectionIndex]
 			return self.makeLayoutSection(for: section, environment: environment)
 		}
+		layout.register(
+			SectionBackgroundDecorationView.self,
+			forDecorationViewOfKind: SectionBackgroundDecorationView.elementKind
+		)
+		collectionView.setCollectionViewLayout(layout, animated: false)
 	}
 
 	private func makeLayoutSection(
@@ -260,7 +274,7 @@ final class CollectionView: UIView, Updatable {
 		switch section.decoration {
 		case .none:
 			break
-		case .background:
+		case .custom:
 			let backgroundItem = NSCollectionLayoutDecorationItem.background(
 				elementKind: SectionBackgroundDecorationView.elementKind
 			)
@@ -307,6 +321,11 @@ final class CollectionView: UIView, Updatable {
 	// MARK: - Snapshot
 
 	private func apply(sections: [CollectionSection], animated: Bool) {
+		// Detect if the section structure changed (added/removed/reordered sections)
+		let previousSectionIDs = currentSections.map(\.id)
+		let newSectionIDs = sections.map(\.id)
+		let sectionsStructureChanged = previousSectionIDs != newSectionIDs
+
 		currentSections = sections
 		visibleItemsBySection.removeAll()
 
@@ -319,13 +338,16 @@ final class CollectionView: UIView, Updatable {
 		}
 		itemLookup = lookup
 
-		// Recreate layout with current sections
-		let newLayout = UICollectionViewCompositionalLayout(sectionProvider: createSectionProvider())
-		newLayout.register(
-			SectionBackgroundDecorationView.self,
-			forDecorationViewOfKind: SectionBackgroundDecorationView.elementKind
-		)
-		collectionView.setCollectionViewLayout(newLayout, animated: animated)
+		// Populate decoration configs for each section
+		DecorationConfigStore.shared.clearConfigs(for: collectionView)
+		for (index, section) in sections.enumerated() {
+			switch section.decoration {
+			case .none:
+				break
+			case .custom:
+				DecorationConfigStore.shared.setConfig(section.decoration, for: collectionView, section: index)
+			}
+		}
 
 		// Build snapshot using stable model IDs
 		var snapshot = NSDiffableDataSourceSnapshot<SectionID, StableItemID>()
@@ -344,6 +366,12 @@ final class CollectionView: UIView, Updatable {
 		}
 
 		dataSource.apply(snapshot, animatingDifferences: animated)
+
+		// Invalidate layout only when section structure changed,
+		// so the section provider re-evaluates layouts for new/reordered sections
+		if sectionsStructureChanged {
+			collectionView.collectionViewLayout.invalidateLayout()
+		}
 	}
 }
 // MARK: - UICollectionViewDelegate
@@ -365,3 +393,31 @@ extension CollectionView: UICollectionViewDelegate {
 	}
 
 }
+// MARK: - DecorationConfigStore
+
+/// Shared store that maps (collectionView, sectionIndex) → DecorationStyle.
+/// Decoration views read their config from here in `apply(_:)`,
+/// since UICollectionView doesn't provide a data-source-like callback for decoration views.
+@MainActor
+final class DecorationConfigStore {
+
+	static let shared = DecorationConfigStore()
+
+	private var configs: [ObjectIdentifier: [Int: DecorationStyle]] = [:]
+
+	private init() {}
+
+	func setConfig(_ style: DecorationStyle, for collectionView: UICollectionView, section: Int) {
+		let key = ObjectIdentifier(collectionView)
+		configs[key, default: [:]][section] = style
+	}
+
+	func config(for collectionView: UICollectionView, section: Int) -> DecorationStyle? {
+		configs[ObjectIdentifier(collectionView)]?[section]
+	}
+
+	func clearConfigs(for collectionView: UICollectionView) {
+		configs.removeValue(forKey: ObjectIdentifier(collectionView))
+	}
+}
+
