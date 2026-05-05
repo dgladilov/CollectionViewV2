@@ -7,6 +7,15 @@
 
 import UIKit
 
+// MARK: - DecorationProvider
+
+/// Protocol that allows decoration views to query their style
+/// from the owning CollectionView without a global shared store.
+@MainActor
+protocol DecorationProvider: AnyObject {
+	func decorationStyle(forSection index: Int) -> DecorationStyle
+}
+
 /// A declarative wrapper around UICollectionView with CompositionalLayout and DiffableDataSource.
 ///
 /// Supports two modes:
@@ -81,10 +90,6 @@ final class CollectionView: UIView, Updatable {
 
 	deinit {
 		streamTask?.cancel()
-		let cv = collectionView
-		MainActor.assumeIsolated {
-			DecorationConfigStore.shared.clearConfigs(for: cv)
-		}
 	}
 
 	// MARK: - Public API
@@ -338,17 +343,6 @@ final class CollectionView: UIView, Updatable {
 		}
 		itemLookup = lookup
 
-		// Populate decoration configs for each section
-		DecorationConfigStore.shared.clearConfigs(for: collectionView)
-		for (index, section) in sections.enumerated() {
-			switch section.decoration {
-			case .none:
-				break
-			case .custom:
-				DecorationConfigStore.shared.setConfig(section.decoration, for: collectionView, section: index)
-			}
-		}
-
 		// Build snapshot using stable model IDs
 		var snapshot = NSDiffableDataSourceSnapshot<SectionID, StableItemID>()
 
@@ -393,31 +387,13 @@ extension CollectionView: UICollectionViewDelegate {
 	}
 
 }
-// MARK: - DecorationConfigStore
 
-/// Shared store that maps (collectionView, sectionIndex) → DecorationStyle.
-/// Decoration views read their config from here in `apply(_:)`,
-/// since UICollectionView doesn't provide a data-source-like callback for decoration views.
-@MainActor
-final class DecorationConfigStore {
+// MARK: - DecorationProvider Conformance
 
-	static let shared = DecorationConfigStore()
-
-	private var configs: [ObjectIdentifier: [Int: DecorationStyle]] = [:]
-
-	private init() {}
-
-	func setConfig(_ style: DecorationStyle, for collectionView: UICollectionView, section: Int) {
-		let key = ObjectIdentifier(collectionView)
-		configs[key, default: [:]][section] = style
-	}
-
-	func config(for collectionView: UICollectionView, section: Int) -> DecorationStyle? {
-		configs[ObjectIdentifier(collectionView)]?[section]
-	}
-
-	func clearConfigs(for collectionView: UICollectionView) {
-		configs.removeValue(forKey: ObjectIdentifier(collectionView))
+extension CollectionView: DecorationProvider {
+	func decorationStyle(forSection index: Int) -> DecorationStyle {
+		guard index < currentSections.count else { return .none }
+		return currentSections[index].decoration
 	}
 }
 

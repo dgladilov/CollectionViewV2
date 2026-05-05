@@ -8,12 +8,14 @@
 import UIKit
 
 /// Decoration view that provides a configurable background for collection view sections.
-/// Supports simple color+cornerRadius styling or hosting an arbitrary custom UIView.
+/// Hosts an arbitrary custom UIView provided via a factory closure.
+/// Queries its `DecorationProvider` (the owning CollectionView) to get the style.
 final class SectionBackgroundDecorationView: UICollectionReusableView {
 
 	static let elementKind = "section-background-decoration"
 
 	private var hostedView: UIView?
+	private var configuredSectionIndex: Int?
 
 	override init(frame: CGRect) {
 		super.init(frame: frame)
@@ -23,13 +25,34 @@ final class SectionBackgroundDecorationView: UICollectionReusableView {
 		super.init(coder: coder)
 	}
 
-	func configure(with style: DecorationStyle) {
-		// Clean up previous state
+	override func apply(_ layoutAttributes: UICollectionViewLayoutAttributes) {
+		super.apply(layoutAttributes)
+
+		let sectionIndex = layoutAttributes.indexPath.section
+
+		// Skip reconfiguration if already set up for this section
+		if configuredSectionIndex == sectionIndex, hostedView != nil {
+			return
+		}
+
+		guard let provider = findDecorationProvider() else { return }
+		let style = provider.decorationStyle(forSection: sectionIndex)
+		configure(with: style)
+		configuredSectionIndex = sectionIndex
+	}
+
+	override func prepareForReuse() {
+		super.prepareForReuse()
+		hostedView?.removeFromSuperview()
+		hostedView = nil
+		configuredSectionIndex = nil
+		backgroundColor = .clear
+	}
+
+	private func configure(with style: DecorationStyle) {
 		hostedView?.removeFromSuperview()
 		hostedView = nil
 		backgroundColor = .clear
-		layer.cornerRadius = 0
-		layer.masksToBounds = false
 
 		switch style {
 		case .none:
@@ -49,31 +72,11 @@ final class SectionBackgroundDecorationView: UICollectionReusableView {
 		}
 	}
 
-	override func apply(_ layoutAttributes: UICollectionViewLayoutAttributes) {
-		super.apply(layoutAttributes)
-
-		// Look up decoration config from the shared store
-		guard let collectionView = findCollectionView() else { return }
-		let sectionIndex = layoutAttributes.indexPath.section
-		if let style = DecorationConfigStore.shared.config(for: collectionView, section: sectionIndex) {
-			configure(with: style)
-		}
-	}
-
-	override func prepareForReuse() {
-		super.prepareForReuse()
-		hostedView?.removeFromSuperview()
-		hostedView = nil
-		backgroundColor = .clear
-		layer.cornerRadius = 0
-		layer.masksToBounds = false
-	}
-
-	private func findCollectionView() -> UICollectionView? {
+	private func findDecorationProvider() -> DecorationProvider? {
 		var current: UIView? = superview
 		while let view = current {
-			if let cv = view as? UICollectionView {
-				return cv
+			if let provider = view.superview as? DecorationProvider {
+				return provider
 			}
 			current = view.superview
 		}
