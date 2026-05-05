@@ -25,7 +25,7 @@ final class CollectionView: UICollectionView, Updatable {
 	// MARK: - Properties
 
 	private let sectionsSource = SectionsSource()
-	private var diffableDataSource: UICollectionViewDiffableDataSource<SectionID, ItemID>!
+	private var diffableDataSource: UICollectionViewDiffableDataSource<SectionID, ItemID>?
 	private var itemLookup: [ItemID: AnyCollectionItem] = [:]
 	private var streamTask: Task<Void, Never>?
 	private var animateUpdates = true
@@ -210,7 +210,7 @@ final class CollectionView: UICollectionView, Updatable {
 			supplementaryView.configure(with: footer, updatable: self)
 		}
 
-		diffableDataSource.supplementaryViewProvider = { collectionView, kind, indexPath in
+		diffableDataSource?.supplementaryViewProvider = { collectionView, kind, indexPath in
 			switch kind {
 			case UICollectionView.elementKindSectionHeader:
 				return collectionView.dequeueConfiguredReusableSupplementary(using: headerRegistration, for: indexPath)
@@ -364,7 +364,7 @@ final class CollectionView: UICollectionView, Updatable {
 
 	private func apply(sections: [CollectionSection], animated: Bool) {
 		// Detect if the section structure changed (added/removed/reordered sections)
-		let previousSectionIDs = diffableDataSource.snapshot().sectionIdentifiers
+		let previousSectionIDs = diffableDataSource?.snapshot().sectionIdentifiers ?? []
 		let newSectionIDs = sections.map(\.id)
 		let sectionsStructureChanged = previousSectionIDs != newSectionIDs
 
@@ -374,7 +374,7 @@ final class CollectionView: UICollectionView, Updatable {
 		var lookup: [ItemID: AnyCollectionItem] = [:]
 		for section in sections {
 			for item in section.items {
-				lookup[item.stableID] = item
+				lookup[item.itemID] = item
 			}
 		}
 		itemLookup = lookup
@@ -384,18 +384,18 @@ final class CollectionView: UICollectionView, Updatable {
 
 		for section in sections {
 			snapshot.appendSections([section.id])
-			let itemIDs = section.items.map(\.stableID)
+			let itemIDs = section.items.map(\.itemID)
 			snapshot.appendItems(itemIDs, toSection: section.id)
 		}
 
 		// Mark all existing items for reconfiguration so cells pick up updated models and resize
-		let previousItems = Set(diffableDataSource.snapshot().itemIdentifiers)
+		let previousItems = Set(diffableDataSource?.snapshot().itemIdentifiers ?? [])
 		let itemsToReconfigure = snapshot.itemIdentifiers.filter { previousItems.contains($0) }
 		if !itemsToReconfigure.isEmpty {
 			snapshot.reconfigureItems(itemsToReconfigure)
 		}
 
-		diffableDataSource.apply(snapshot, animatingDifferences: animated)
+		diffableDataSource?.apply(snapshot, animatingDifferences: animated)
 
 		// Invalidate layout only when section structure changed,
 		// so the section provider re-evaluates layouts for new/reordered sections

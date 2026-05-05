@@ -65,11 +65,7 @@ final class HomeViewModel {
 		sections[sectionIndex].items[itemIdx].title = "Edited #\(Int.random(in: 100...999))"
 		sections[sectionIndex].items[itemIdx].color = palette.randomElement()!
 		// Toggle details to demonstrate height change
-		if sections[sectionIndex].items[itemIdx].details == nil {
-			sections[sectionIndex].items[itemIdx].details = "This cell was edited and now displays additional details that make it taller."
-		} else {
-			sections[sectionIndex].items[itemIdx].details = nil
-		}
+		sections[sectionIndex].items[itemIdx].details = "This cell was edited and now displays additional details that make it taller."
 		rebuildSections()
 	}
 

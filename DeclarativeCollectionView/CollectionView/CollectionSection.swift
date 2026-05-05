@@ -81,9 +81,10 @@ struct CollectionSection: Sendable {
 		contentInsets: NSDirectionalEdgeInsets = .zero,
 		@CollectionItemBuilder items: () -> [AnyCollectionItem]
 	) {
-		self.id = SectionID(id)
+		let sectionID = SectionID(id)
+		self.id = sectionID
 		self.layout = layout
-		self.items = items()
+		self.items = items().map { $0.sectionID == nil ? $0.sectionID(sectionID) : $0 }
 		self.header = nil
 		self.footer = nil
 		self.supplementaries = []
@@ -98,9 +99,10 @@ struct CollectionSection: Sendable {
 		contentInsets: NSDirectionalEdgeInsets = .zero,
 		items: [AnyCollectionItem]
 	) {
-		self.id = SectionID(id)
+		let sectionID = SectionID(id)
+		self.id = sectionID
 		self.layout = layout
-		self.items = items
+		self.items = items.map { $0.sectionID == nil ? $0.sectionID(sectionID) : $0 }
 		self.header = nil
 		self.footer = nil
 		self.supplementaries = []

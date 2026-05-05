@@ -35,7 +35,7 @@ struct ItemID: Hashable, Sendable {
 /// Type-erased wrapper for any CollectionItemable.
 struct AnyCollectionItem {
 
-	let stableID: ItemID
+	let itemID: ItemID
 	let preferredSize: CGSize
 	let viewTypeId: ObjectIdentifier
 
@@ -43,6 +43,8 @@ struct AnyCollectionItem {
 	private let _updateView: @MainActor (UIView) -> Void
 	private let _setUpdatable: @MainActor (UIView, Updatable?) -> Void
 
+	/// The section this item belongs to. Set automatically by `CollectionSection`.
+	private(set) var sectionID: SectionID?
 	/// Called when the item is tapped.
 	private(set) var onTap: (@MainActor () -> Void)?
 	/// Called when the cell becomes visible on screen.
@@ -50,7 +52,7 @@ struct AnyCollectionItem {
 
 	@MainActor
 	init<V: CollectionItemable>(_ model: V) {
-		self.stableID = ItemID(model.id)
+		self.itemID = ItemID(model.id)
 		self.preferredSize = model.preferredSize
 		self.viewTypeId = ObjectIdentifier(V.ViewType.self)
 
@@ -67,7 +69,8 @@ struct AnyCollectionItem {
 			guard let typedView = existingView as? V.ViewType else { return }
 			typedView.updatable = updatable
 		}
-		
+
+		self.sectionID = model.sectionID
 		self.onTap = model.onTap
 		self.onDisplay = model.onDisplay
 	}
@@ -88,6 +91,12 @@ struct AnyCollectionItem {
 	}
 
 	// MARK: - Fluent API
+
+	func sectionID(_ id: SectionID) -> AnyCollectionItem {
+		var copy = self
+		copy.sectionID = id
+		return copy
+	}
 
 	func onTap(_ handler: @escaping @MainActor () -> Void) -> AnyCollectionItem {
 		var copy = self
