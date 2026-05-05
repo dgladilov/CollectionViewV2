@@ -26,16 +26,16 @@ final class CollectionView: UIView, Updatable {
 	// MARK: - Properties
 
 	private(set) var collectionView: UICollectionView
-	private var dataSource: UICollectionViewDiffableDataSource<SectionID, StableItemID>
+	private var dataSource: UICollectionViewDiffableDataSource<SectionID, ItemID>
 	private var currentSections: [CollectionSection] = []
-	private var itemLookup: [StableItemID: AnyCollectionItem] = [:]
+	private var itemLookup: [ItemID: AnyCollectionItem] = [:]
 	private var streamTask: Task<Void, Never>?
 	private var animateUpdates = true
 	/// Tracks currently visible items per section to detect appearance/disappearance transitions.
 	private var visibleItemsBySection: [Int: Set<Int>] = [:]
 
 	/// Called when an item is tapped. Provides section ID, item stable ID, and index path.
-	var onItemTap: ((SectionID, StableItemID, IndexPath) -> Void)?
+	var onItemTap: ((SectionID, ItemID, IndexPath) -> Void)?
 
 	// MARK: - Initializers
 
@@ -111,7 +111,7 @@ final class CollectionView: UIView, Updatable {
 	// MARK: - Factory
 
 	private static func makeCollectionViewAndDataSource()
-		-> (UICollectionView, UICollectionViewDiffableDataSource<SectionID, StableItemID>)
+		-> (UICollectionView, UICollectionViewDiffableDataSource<SectionID, ItemID>)
 	{
 		let layout = makeCompositionalLayout()
 		layout.register(
@@ -124,9 +124,9 @@ final class CollectionView: UIView, Updatable {
 		cv.backgroundColor = .systemBackground
 
 		// Placeholder cell registration — replaced in setupCellAndSupplementaryProviders()
-		let cellRegistration = UICollectionView.CellRegistration<CollectionItemCell, StableItemID> { _, _, _ in }
+		let cellRegistration = UICollectionView.CellRegistration<CollectionItemCell, ItemID> { _, _, _ in }
 
-		let ds = UICollectionViewDiffableDataSource<SectionID, StableItemID>(
+		let ds = UICollectionViewDiffableDataSource<SectionID, ItemID>(
 			collectionView: cv
 		) { collectionView, indexPath, itemID in
 			collectionView.dequeueConfiguredReusableCell(using: cellRegistration, for: indexPath, item: itemID)
@@ -149,12 +149,12 @@ final class CollectionView: UIView, Updatable {
 	}
 
 	private func setupCellAndSupplementaryProviders() {
-		let cellRegistration = UICollectionView.CellRegistration<CollectionItemCell, StableItemID> { [weak self] cell, _, itemID in
+		let cellRegistration = UICollectionView.CellRegistration<CollectionItemCell, ItemID> { [weak self] cell, _, itemID in
 			guard let self, let item = self.itemLookup[itemID] else { return }
 			cell.configure(with: item, updatable: self)
 		}
 
-		dataSource = UICollectionViewDiffableDataSource<SectionID, StableItemID>(
+		dataSource = UICollectionViewDiffableDataSource<SectionID, ItemID>(
 			collectionView: collectionView
 		) { collectionView, indexPath, itemID in
 			collectionView.dequeueConfiguredReusableCell(using: cellRegistration, for: indexPath, item: itemID)
@@ -335,7 +335,7 @@ final class CollectionView: UIView, Updatable {
 		visibleItemsBySection.removeAll()
 
 		// Rebuild item lookup from model identity
-		var lookup: [StableItemID: AnyCollectionItem] = [:]
+		var lookup: [ItemID: AnyCollectionItem] = [:]
 		for section in sections {
 			for item in section.items {
 				lookup[item.stableID] = item
@@ -344,7 +344,7 @@ final class CollectionView: UIView, Updatable {
 		itemLookup = lookup
 
 		// Build snapshot using stable model IDs
-		var snapshot = NSDiffableDataSourceSnapshot<SectionID, StableItemID>()
+		var snapshot = NSDiffableDataSourceSnapshot<SectionID, ItemID>()
 
 		for section in sections {
 			snapshot.appendSections([section.id])

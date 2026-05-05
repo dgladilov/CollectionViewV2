@@ -18,11 +18,11 @@ struct SectionID: Hashable, Sendable {
 	}
 }
 
-// MARK: - StableItemID
+// MARK: - ItemID
 
 /// A Sendable, Hashable identifier for collection items.
 /// Built from the model's `Identifiable.id` via string representation.
-struct StableItemID: Hashable, Sendable {
+struct ItemID: Hashable, Sendable {
 	private let value: String
 
 	init<ID: Hashable>(_ id: ID) {
@@ -35,7 +35,7 @@ struct StableItemID: Hashable, Sendable {
 /// Type-erased wrapper for any CollectionItemable.
 struct AnyCollectionItem {
 
-	let stableID: StableItemID
+	let stableID: ItemID
 	let preferredSize: CGSize
 	let viewTypeId: ObjectIdentifier
 
@@ -50,7 +50,7 @@ struct AnyCollectionItem {
 
 	@MainActor
 	init<V: CollectionItemable>(_ model: V) {
-		self.stableID = StableItemID(model.id)
+		self.stableID = ItemID(model.id)
 		self.preferredSize = model.preferredSize
 		self.viewTypeId = ObjectIdentifier(V.ViewType.self)
 

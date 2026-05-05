@@ -56,7 +56,7 @@ final class SearchInteractor: SearchBusinessLogic {
 				let groupID = "group-\(entry.title.lowercased().replacingOccurrences(of: " ", with: "-"))"
 				if groupID == sectionRaw {
 					let itemStableID = request.itemID
-					entry.items.removeAll { StableItemID($0.id) == itemStableID }
+					entry.items.removeAll { ItemID($0.id) == itemStableID }
 					if entry.items.isEmpty {
 						blocks.remove(at: blockIndex)
 					} else {
@@ -70,9 +70,9 @@ final class SearchInteractor: SearchBusinessLogic {
 				let compositeID = "composite-\(entry.title.lowercased().replacingOccurrences(of: " ", with: "-"))"
 				if sectionRaw == compositeID {
 					let itemStableID = request.itemID
-					entry.topGridItems.removeAll { StableItemID($0.id) == itemStableID }
-					entry.carouselItems.removeAll { StableItemID($0.id) == itemStableID }
-					entry.bottomGridItems.removeAll { StableItemID($0.id) == itemStableID }
+					entry.topGridItems.removeAll { ItemID($0.id) == itemStableID }
+					entry.carouselItems.removeAll { ItemID($0.id) == itemStableID }
+					entry.bottomGridItems.removeAll { ItemID($0.id) == itemStableID }
 					if entry.topGridItems.isEmpty && entry.carouselItems.isEmpty && entry.bottomGridItems.isEmpty {
 						blocks.remove(at: blockIndex)
 					} else {

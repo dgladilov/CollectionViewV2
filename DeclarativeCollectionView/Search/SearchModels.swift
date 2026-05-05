@@ -100,7 +100,7 @@ enum Search {
 	enum RemoveItem {
 		struct Request {
 			let sectionID: SectionID
-			let itemID: StableItemID
+			let itemID: ItemID
 		}
 	}
 

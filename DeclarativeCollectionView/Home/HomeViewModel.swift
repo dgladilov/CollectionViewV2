@@ -49,9 +49,9 @@ final class HomeViewModel {
 		rebuildSections()
 	}
 
-	func removeItem(sectionID: SectionID, itemID: StableItemID) {
+	func removeItem(sectionID: SectionID, itemID: ItemID) {
 		guard let sIdx = sections.firstIndex(where: { SectionID($0.id) == sectionID }) else { return }
-		sections[sIdx].items.removeAll { StableItemID($0.id) == itemID }
+		sections[sIdx].items.removeAll { ItemID($0.id) == itemID }
 		if sections[sIdx].items.isEmpty {
 			sections.remove(at: sIdx)
 		}

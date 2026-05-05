@@ -114,7 +114,7 @@ final class SearchViewController: UIViewController, SearchDisplayLogic {
 	func didTapCarouselItem(_ item: SearchItem, inSection sectionID: SectionID) {
 		interactor?.removeItem(Search.RemoveItem.Request(
 			sectionID: sectionID,
-			itemID: StableItemID(item.id)
+			itemID: ItemID(item.id)
 		))
 	}
 }
