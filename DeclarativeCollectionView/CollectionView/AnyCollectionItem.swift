@@ -7,28 +7,19 @@
 
 import UIKit
 
-// MARK: - SectionID
+// MARK: - UniqueID
 
-/// A Sendable, Hashable identifier for collection sections.
-struct SectionID: Hashable, Sendable {
+/// A universal Sendable, Hashable identifier used for both sections and items.
+struct UniqueID: Hashable, Sendable {
 	let rawValue: String
 
-	init(_ rawValue: String) {
-		self.rawValue = rawValue
-	}
-}
-
-// MARK: - ItemID
-
-/// A Sendable, Hashable identifier for collection items.
-/// Built from the model's `Identifiable.id` via string representation.
-struct ItemID: Hashable, Sendable {
-	private let value: String
-
 	init<ID: Hashable>(_ id: ID) {
-		self.value = "\(id)"
+		self.rawValue = "\(id)"
 	}
 }
+
+typealias SectionID = UniqueID
+typealias ItemID = UniqueID
 
 // MARK: - AnyCollectionItem
 
