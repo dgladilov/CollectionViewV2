@@ -36,7 +36,7 @@ struct ExpandableModel: Viewable, CollectionItemable {
 	}
 }
 
-final class ExpandableView: UIView, ModelableView {
+final class ExpandableView: UIView, ModelableView, SectionInvalidatable {
 
 
 	var model: ExpandableModel {
@@ -116,7 +116,7 @@ final class ExpandableView: UIView, ModelableView {
 
 	@objc private func handleTap() {
 		model.isExpanded.toggle()
-		updatable?.update(animated: true)
+		invalidateSection(animated: true)
 	}
 
 	private func updateUI() {

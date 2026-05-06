@@ -22,8 +22,6 @@ extension Viewable {
 }
 
 protocol Updatable {
-
-	func update(animated: Bool)
 }
 
 protocol ModelableView: UIView {

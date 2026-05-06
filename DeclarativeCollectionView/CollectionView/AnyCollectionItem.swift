@@ -32,7 +32,6 @@ struct AnyCollectionItem {
 
 	private let _makeView: @MainActor () -> UIView
 	private let _updateView: @MainActor (UIView) -> Void
-	private let _setUpdatable: @MainActor (UIView, Updatable?) -> Void
 
 	/// The section this item belongs to. Set automatically by `CollectionSection`.
 	private(set) var sectionID: SectionID?
@@ -56,11 +55,6 @@ struct AnyCollectionItem {
 			let newView = viewableCopy.makeView()
 			typedView.model = newView.model
 		}
-		self._setUpdatable = { existingView, updatable in
-			guard let typedView = existingView as? V.ViewType else { return }
-			typedView.updatable = updatable
-		}
-
 		self.onTap = model.onTap
 		self.onDisplay = model.onDisplay
 	}
@@ -73,11 +67,6 @@ struct AnyCollectionItem {
 	@MainActor
 	func updateView(_ view: UIView) {
 		_updateView(view)
-	}
-
-	@MainActor
-	func setUpdatable(_ view: UIView, updatable: Updatable?) {
-		_setUpdatable(view, updatable)
 	}
 
 	// MARK: - Fluent API
@@ -111,10 +100,9 @@ struct AnySupplementaryItem {
 
 	private let _makeView: @MainActor () -> UIView
 	private let _updateView: @MainActor (UIView) -> Void
-	private let _setUpdatable: @MainActor (UIView, Updatable?) -> Void
 
 	@MainActor
-	init<V: Viewable>(elementKind: String, viewable: V) where V.ViewType: ModelableView {
+	init<V: Viewable>(elementKind: String, viewable: V) {
 		self.elementKind = elementKind
 		self.preferredSize = viewable.preferredSize
 
@@ -126,10 +114,6 @@ struct AnySupplementaryItem {
 			guard let typedView = view as? V.ViewType else { return }
 			let newView = viewableCopy.makeView()
 			typedView.model = newView.model
-		}
-		self._setUpdatable = { view, updatable in
-			guard let typedView = view as? V.ViewType else { return }
-			typedView.updatable = updatable
 		}
 	}
 
@@ -143,8 +127,4 @@ struct AnySupplementaryItem {
 		_updateView(view)
 	}
 
-	@MainActor
-	func setUpdatable(_ view: UIView, updatable: Updatable?) {
-		_setUpdatable(view, updatable)
-	}
 }

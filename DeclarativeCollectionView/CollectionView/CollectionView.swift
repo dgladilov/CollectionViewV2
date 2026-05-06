@@ -178,12 +178,33 @@ final class CollectionView: UICollectionView, Updatable {
 		}
 	}
 
+	/// Invalidates layout for only the section at the given index.
+	func updateSection(at sectionIndex: Int, animated: Bool) {
+		guard sectionIndex < numberOfSections else {
+			update(animated: animated)
+			return
+		}
+
+		let itemCount = numberOfItems(inSection: sectionIndex)
+		let indexPaths = (0..<itemCount).map { IndexPath(item: $0, section: sectionIndex) }
+		let context = UICollectionViewLayoutInvalidationContext()
+		context.invalidateItems(at: indexPaths)
+
+		if animated {
+			performBatchUpdates {
+				self.collectionViewLayout.invalidateLayout(with: context)
+			}
+		} else {
+			collectionViewLayout.invalidateLayout(with: context)
+		}
+	}
+
 	// MARK: - Data Source Setup
 
 	private func setupDataSource() {
 		let cellRegistration = UICollectionView.CellRegistration<CollectionItemCell, ItemID> { [weak self] cell, _, itemID in
 			guard let self, let item = self.itemLookup[itemID] else { return }
-			cell.configure(with: item, updatable: self)
+			cell.configure(with: item)
 		}
 
 		diffableDataSource = UICollectionViewDiffableDataSource<SectionID, ItemID>(
@@ -198,7 +219,7 @@ final class CollectionView: UICollectionView, Updatable {
 			guard let self,
 				  indexPath.section < self.sectionsSource.current.count,
 				  let header = self.sectionsSource.current[indexPath.section].header else { return }
-			supplementaryView.configure(with: header, updatable: self)
+			supplementaryView.configure(with: header)
 		}
 
 		let footerRegistration = UICollectionView.SupplementaryRegistration<SupplementaryHostView>(
@@ -207,7 +228,7 @@ final class CollectionView: UICollectionView, Updatable {
 			guard let self,
 				  indexPath.section < self.sectionsSource.current.count,
 				  let footer = self.sectionsSource.current[indexPath.section].footer else { return }
-			supplementaryView.configure(with: footer, updatable: self)
+			supplementaryView.configure(with: footer)
 		}
 
 		diffableDataSource?.supplementaryViewProvider = { collectionView, kind, indexPath in

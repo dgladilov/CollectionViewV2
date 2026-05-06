@@ -14,16 +14,10 @@ final class CollectionItemCell: UICollectionViewCell {
 	private var hostedView: UIView?
 	private var currentViewTypeId: ObjectIdentifier?
 
-	override func prepareForReuse() {
-		super.prepareForReuse()
-		// Keep the hosted view for potential reuse — it will be updated in configure()
-	}
-
-	func configure(with item: AnyCollectionItem, updatable: Updatable?) {
+	func configure(with item: AnyCollectionItem) {
 		// If the hosted view type matches, just update the model
 		if let existing = hostedView, currentViewTypeId == item.viewTypeId {
 			item.updateView(existing)
-			item.setUpdatable(existing, updatable: updatable)
 			return
 		}
 
@@ -41,7 +35,6 @@ final class CollectionItemCell: UICollectionViewCell {
 			view.bottomAnchor.constraint(equalTo: contentView.bottomAnchor)
 		])
 
-		item.setUpdatable(view, updatable: updatable)
 		hostedView = view
 		currentViewTypeId = item.viewTypeId
 	}
