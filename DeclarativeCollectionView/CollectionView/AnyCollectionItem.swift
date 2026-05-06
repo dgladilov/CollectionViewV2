@@ -70,7 +70,6 @@ struct AnyCollectionItem {
 			typedView.updatable = updatable
 		}
 
-		self.sectionID = model.sectionID
 		self.onTap = model.onTap
 		self.onDisplay = model.onDisplay
 	}

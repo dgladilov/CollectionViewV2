@@ -39,6 +39,7 @@ final class HomeViewController: UIViewController {
 		viewModel.onSectionsChanged = { [weak self] sections in
 			self?.collectionView.send(sections)
 		}
+		viewModel.start()
 	}
 
 	private func setupToolbar() {

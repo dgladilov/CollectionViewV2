@@ -37,6 +37,9 @@ final class HomeViewModel {
 			SectionData(id: "section-1", title: "Second Section", items: makeItems(count: 2))
 		]
 		nextSectionIndex = 2
+	}
+
+	func start() {
 		rebuildSections()
 	}
 

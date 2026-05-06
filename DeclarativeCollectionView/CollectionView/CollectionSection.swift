@@ -29,23 +29,28 @@ enum SectionLayout: Sendable {
 	@MainActor func makeLayoutSection(environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
 		switch self {
 		case .plain:
-			let config = UICollectionLayoutListConfiguration(appearance: .plain)
+			var config = UICollectionLayoutListConfiguration(appearance: .plain)
+			config.showsSeparators = false
 			return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
 
 		case .insetGrouped:
-			let config = UICollectionLayoutListConfiguration(appearance: .insetGrouped)
+			var config = UICollectionLayoutListConfiguration(appearance: .insetGrouped)
+			config.showsSeparators = false
 			return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
 
 		case .grouped:
-			let config = UICollectionLayoutListConfiguration(appearance: .grouped)
+			var config = UICollectionLayoutListConfiguration(appearance: .grouped)
+			config.showsSeparators = false
 			return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
 
 		case .sidebar:
-			let config = UICollectionLayoutListConfiguration(appearance: .sidebar)
+			var config = UICollectionLayoutListConfiguration(appearance: .sidebar)
+			config.showsSeparators = false
 			return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
 
 		case .sidebarPlain:
-			let config = UICollectionLayoutListConfiguration(appearance: .sidebarPlain)
+			var config = UICollectionLayoutListConfiguration(appearance: .sidebarPlain)
+			config.showsSeparators = false
 			return NSCollectionLayoutSection.list(using: config, layoutEnvironment: environment)
 
 		case .custom(let provider):
@@ -103,6 +108,24 @@ struct CollectionSection: Sendable {
 		self.id = sectionID
 		self.layout = layout
 		self.items = items.map { $0.sectionID == nil ? $0.sectionID(sectionID) : $0 }
+		self.header = nil
+		self.footer = nil
+		self.supplementaries = []
+		self.decoration = decoration
+		self.contentInsets = contentInsets
+	}
+
+	@MainActor init(
+		id: String,
+		layout: SectionLayout,
+		decoration: DecorationStyle = .none,
+		contentInsets: NSDirectionalEdgeInsets = .zero,
+		items: [any CollectionItemable]
+	) {
+		let sectionID = SectionID(id)
+		self.id = sectionID
+		self.layout = layout
+		self.items = items.map { $0.makeItem().sectionID(sectionID) }
 		self.header = nil
 		self.footer = nil
 		self.supplementaries = []
