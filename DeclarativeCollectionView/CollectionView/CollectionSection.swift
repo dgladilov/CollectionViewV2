@@ -193,7 +193,7 @@ struct CollectionSection: Sendable {
 	/// Возвращает копию секции с хедером.
 	/// - Parameter viewable: Модель хедера, реализующая `Viewable`.
 	@MainActor
-	func header<V: Viewable>(_ viewable: V) -> CollectionSection {
+	func header<V: Viewable>(_ viewable: V) -> CollectionSection where V.ViewType: ModelableView {
 		var copy = self
 		copy.header = AnySupplementaryItem(
 			elementKind: UICollectionView.elementKindSectionHeader,
@@ -205,7 +205,7 @@ struct CollectionSection: Sendable {
 	/// Возвращает копию секции с футером.
 	/// - Parameter viewable: Модель футера, реализующая `Viewable`.
 	@MainActor
-	func footer<V: Viewable>(_ viewable: V) -> CollectionSection {
+	func footer<V: Viewable>(_ viewable: V) -> CollectionSection where V.ViewType: ModelableView {
 		var copy = self
 		copy.footer = AnySupplementaryItem(
 			elementKind: UICollectionView.elementKindSectionFooter,
@@ -219,7 +219,7 @@ struct CollectionSection: Sendable {
 	///   - kind: Строковый идентификатор типа supplementary.
 	///   - viewable: Модель supplementary, реализующая `Viewable`.
 	@MainActor
-	func supplementary<V: Viewable>(kind: String, _ viewable: V) -> CollectionSection {
+	func supplementary<V: Viewable>(kind: String, _ viewable: V) -> CollectionSection where V.ViewType: ModelableView {
 		var copy = self
 		copy.supplementaries.append(
 			AnySupplementaryItem(elementKind: kind, viewable: viewable)

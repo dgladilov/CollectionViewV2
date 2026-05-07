@@ -9,7 +9,7 @@ import UIKit
 
 protocol Viewable {
 
-	associatedtype ViewType: ModelableView
+	associatedtype ViewType: UIView
 
 	@MainActor var preferredSize: CGSize { get }
 

@@ -68,7 +68,7 @@ struct AnyCollectionItem {
 	/// Создаёт type-erased обёртку из конкретного `CollectionItemable`.
 	/// - Parameter model: Модель элемента, реализующая `CollectionItemable`.
 	@MainActor
-	init<V: CollectionItemable>(_ model: V) {
+	init<V: CollectionItemable>(_ model: V) where V.ViewType: ModelableView {
 		self.itemID = ItemID(model.id)
 		self.preferredSize = model.preferredSize
 		self.viewTypeId = ObjectIdentifier(V.ViewType.self)
@@ -147,7 +147,7 @@ struct AnySupplementaryItem {
 	///   - elementKind: Тип supplementary (`elementKindSectionHeader`, `elementKindSectionFooter` и пр.).
 	///   - viewable: Модель, реализующая `Viewable`.
 	@MainActor
-	init<V: Viewable>(elementKind: String, viewable: V) {
+	init<V: Viewable>(elementKind: String, viewable: V) where V.ViewType: ModelableView {
 		self.elementKind = elementKind
 		self.preferredSize = viewable.preferredSize
 

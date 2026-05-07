@@ -30,6 +30,9 @@ extension CollectionItemable {
 	var onTap: (@MainActor @Sendable () -> Void)? { nil }
 
 	var onDisplay: (@MainActor @Sendable () -> Void)? { nil }
+}
+
+extension CollectionItemable where ViewType: ModelableView {
 
 	@MainActor func makeItem() -> AnyCollectionItem {
 		AnyCollectionItem(self)
