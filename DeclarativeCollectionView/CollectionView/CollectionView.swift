@@ -9,17 +9,31 @@ import UIKit
 
 // MARK: - DecorationProvider
 
-/// Protocol that allows decoration views to query their style
-/// from the owning CollectionView without a global shared store.
+/// Протокол для получения стиля декоративного фона секции.
+///
+/// Реализуется `CollectionView`, чтобы `SectionBackgroundDecorationView`
+/// мог запросить стиль декорации без глобального состояния.
 @MainActor
 protocol DecorationProvider: AnyObject {
+
+	/// Возвращает стиль декорации для секции по индексу.
+	/// - Parameter index: Индекс секции.
 	func decorationStyle(forSection index: Int) -> DecorationStyle
 }
 
-/// A declarative UICollectionView with CompositionalLayout and DiffableDataSource.
+/// Декларативная коллекция на основе `UICollectionViewCompositionalLayout` и `DiffableDataSource`.
 ///
-/// Owns its `SectionsSource` internally. Use `send`, `append`, `insert`, `remove`, `update`
-/// and other methods to mutate sections. The collection auto-updates on changes.
+/// Управляет секциями через внутренний `SectionsSource`. Для изменения содержимого
+/// используйте методы `send`, `append`, `insert`, `remove`, `update` и другие.
+/// Коллекция автоматически обновляется при каждом изменении.
+///
+/// ```swift
+/// let collectionView = CollectionView {
+///     CollectionSection(id: "main", layout: .plain) {
+///         ItemModel(id: "1", title: "Привет")
+///     }
+/// }
+/// ```
 final class CollectionView: UICollectionView, Updatable {
 
 	// MARK: - Properties
@@ -39,13 +53,15 @@ final class CollectionView: UICollectionView, Updatable {
 		commonInit()
 	}
 
+	/// Создаёт коллекцию с пустым содержимым.
 	init() {
 		let layout = Self.makeInitialLayout()
 		super.init(frame: .zero, collectionViewLayout: layout)
 		commonInit()
 	}
 
-	/// Convenience: create with an initial set of sections.
+	/// Создаёт коллекцию с начальным набором секций, заданных через декларативный билдер.
+	/// - Parameter builder: Билдер секций (`@CollectionSectionBuilder`).
 	convenience init(@CollectionSectionBuilder _ builder: () -> [CollectionSection]) {
 		self.init()
 		send(builder())
@@ -78,98 +94,130 @@ final class CollectionView: UICollectionView, Updatable {
 		}
 	}
 
-	// MARK: - Public API (Sections)
+	// MARK: - Публичный API (секции)
 
-	/// Current sections snapshot.
+	/// Текущий массив секций.
 	var sections: [CollectionSection] { sectionsSource.current }
 
-	/// Replace all sections at once.
+	/// Заменяет все секции переданным массивом.
+	/// - Parameter sections: Новый массив секций.
 	func send(_ sections: [CollectionSection]) {
 		sectionsSource.send(sections)
 	}
 
-	/// Replace all sections using the declarative builder.
+	/// Заменяет все секции с помощью декларативного билдера.
+	/// - Parameter builder: Билдер секций.
 	func send(@CollectionSectionBuilder _ builder: () -> [CollectionSection]) {
 		sectionsSource.send(builder)
 	}
 
-	/// Append a section to the end.
+	/// Добавляет секцию в конец.
+	/// - Parameter section: Секция для добавления.
 	func append(_ section: CollectionSection) {
 		sectionsSource.append(section)
 	}
 
-	/// Append multiple sections to the end.
+	/// Добавляет несколько секций в конец.
+	/// - Parameter sections: Массив секций.
 	func append(contentsOf sections: [CollectionSection]) {
 		sectionsSource.append(contentsOf: sections)
 	}
 
-	/// Insert a section at the given index.
+	/// Вставляет секцию по индексу.
+	/// - Parameters:
+	///   - section: Секция для вставки.
+	///   - index: Позиция вставки.
 	func insert(_ section: CollectionSection, at index: Int) {
 		sectionsSource.insert(section, at: index)
 	}
 
-	/// Insert a section after the section with the given id.
+	/// Вставляет секцию после секции с указанным `id`.
+	/// - Parameters:
+	///   - section: Секция для вставки.
+	///   - sectionID: Идентификатор секции, после которой вставлять.
 	func insert(_ section: CollectionSection, after sectionID: String) {
 		sectionsSource.insert(section, after: sectionID)
 	}
 
-	/// Insert a section before the section with the given id.
+	/// Вставляет секцию перед секцией с указанным `id`.
+	/// - Parameters:
+	///   - section: Секция для вставки.
+	///   - sectionID: Идентификатор секции, перед которой вставлять.
 	func insert(_ section: CollectionSection, before sectionID: String) {
 		sectionsSource.insert(section, before: sectionID)
 	}
 
-	/// Remove the section with the given id.
+	/// Удаляет секцию с указанным `id`.
+	/// - Parameter sectionID: Строковый идентификатор секции.
+	/// - Returns: Удалённая секция, или `nil` если не найдена.
 	@discardableResult
 	func remove(sectionID: String) -> CollectionSection? {
 		sectionsSource.remove(sectionID: sectionID)
 	}
 
-	/// Remove the section at the given index.
+	/// Удаляет секцию по индексу.
+	/// - Parameter index: Индекс секции.
+	/// - Returns: Удалённая секция.
 	@discardableResult
 	func remove(at index: Int) -> CollectionSection {
 		sectionsSource.remove(at: index)
 	}
 
-	/// Remove all sections.
+	/// Удаляет все секции.
 	func removeAll() {
 		sectionsSource.removeAll()
 	}
 
-	/// Replace the section with the matching id.
+	/// Заменяет секцию с совпадающим `id`.
+	/// - Parameter section: Новая секция.
 	func update(_ section: CollectionSection) {
 		sectionsSource.update(section)
 	}
 
-	/// Mutate the section with the given id in-place.
+	/// Мутирует секцию с указанным `id` через замыкание.
+	/// - Parameters:
+	///   - sectionID: Строковый идентификатор секции.
+	///   - transform: Замыкание для мутации секции.
 	func update(sectionID: String, _ transform: (inout CollectionSection) -> Void) {
 		sectionsSource.update(sectionID: sectionID, transform)
 	}
 
-	/// Perform multiple mutations in a batch, emitting only one update at the end.
+	/// Выполняет несколько мутаций в одном батче.
+	/// Промежуточные обновления подавляются, публикуется только одно в конце.
+	/// - Parameter mutations: Замыкание с мутациями.
 	func batch(_ mutations: (CollectionView) -> Void) {
 		sectionsSource.batch { _ in
 			mutations(self)
 		}
 	}
 
-	/// Returns the section with the given id, or nil.
+	/// Возвращает секцию с указанным `id`, или `nil`.
+	/// - Parameter id: Строковый идентификатор секции.
 	func section(id: String) -> CollectionSection? {
 		sectionsSource.section(id: id)
 	}
 
-	/// Returns the index of the section with the given id, or nil.
+	/// Возвращает индекс секции с указанным `id`, или `nil`.
+	/// - Parameter sectionID: Строковый идентификатор секции.
 	func index(of sectionID: String) -> Int? {
 		sectionsSource.index(of: sectionID)
 	}
 
-	/// Manual reload with a declarative section builder.
+	/// Полностью перезагружает коллекцию с новым набором секций.
+	/// - Parameters:
+	///   - animated: Анимировать ли обновление (по умолчанию `true`).
+	///   - builder: Билдер секций.
 	func reload(animated: Bool = true, @CollectionSectionBuilder _ builder: () -> [CollectionSection]) {
 		animateUpdates = animated
 		send(builder())
 		animateUpdates = true
 	}
 
-	/// Updatable conformance — invalidates layout so cells can resize themselves.
+	/// Инвалидирует layout всей коллекции целиком.
+	///
+	/// Реализация `Updatable`. Используется как fallback, когда нужен полный пересчёт.
+	/// Для точечной инвалидации одной секции используйте `updateSection(at:animated:)`.
+	/// - Parameter animated: Анимировать ли обновление.
 	func update(animated: Bool) {
 		if animated {
 			performBatchUpdates(nil)
@@ -178,7 +226,13 @@ final class CollectionView: UICollectionView, Updatable {
 		}
 	}
 
-	/// Invalidates layout for only the section at the given index.
+	/// Инвалидирует layout только указанной секции.
+	///
+	/// Пересчитывает размеры ячеек только в одной секции, не затрагивая остальные.
+	/// Если индекс выходит за границы — выполняется полная инвалидация через `update(animated:)`.
+	/// - Parameters:
+	///   - sectionIndex: Индекс секции.
+	///   - animated: Анимировать ли обновление.
 	func updateSection(at sectionIndex: Int, animated: Bool) {
 		guard sectionIndex < numberOfSections else {
 			update(animated: animated)
@@ -440,12 +494,12 @@ extension CollectionView: UICollectionViewDelegate {
 	}
 }
 
-// MARK: - DecorationProvider Conformance
+// MARK: - DecorationProvider
 
 extension CollectionView: DecorationProvider {
+
 	func decorationStyle(forSection index: Int) -> DecorationStyle {
 		guard index < sectionsSource.current.count else { return .none }
 		return sectionsSource.current[index].decoration
 	}
 }
-

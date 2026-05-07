@@ -9,6 +9,10 @@ import UIKit
 
 // MARK: - CollectionItemConvertible
 
+/// Внутренний протокол для приведения различных типов к массиву `AnyCollectionItem`.
+///
+/// Используется `CollectionItemBuilder`-ом для поддержки как одиночных элементов,
+/// так и массивов в декларативном DSL.
 protocol CollectionItemConvertible {
 	func erasedToAnyItem() -> [AnyCollectionItem]
 }
@@ -23,6 +27,20 @@ extension Array: CollectionItemConvertible where Element == AnyCollectionItem {
 
 // MARK: - CollectionItemBuilder
 
+/// Result builder для декларативного описания элементов секции.
+///
+/// Позволяет описывать содержимое секции в DSL-стиле:
+/// ```swift
+/// CollectionSection(id: "main", layout: .plain) {
+///     ItemModel(id: "1", title: "Первый")
+///     ItemModel(id: "2", title: "Второй")
+///     if showThird {
+///         ItemModel(id: "3", title: "Третий")
+///     }
+/// }
+/// ```
+///
+/// Поддерживает `if/else`, `Optional`, `for...in` и вложенные массивы.
 @MainActor
 @resultBuilder
 struct CollectionItemBuilder {

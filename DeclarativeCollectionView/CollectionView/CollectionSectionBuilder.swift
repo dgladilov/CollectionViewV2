@@ -9,6 +9,10 @@ import Foundation
 
 // MARK: - CollectionSectionConvertible
 
+/// Внутренний протокол для приведения различных типов к массиву `CollectionSection`.
+///
+/// Используется `CollectionSectionBuilder`-ом для поддержки как одиночных секций,
+/// так и массивов в декларативном DSL.
 protocol CollectionSectionConvertible {
 	func asCollectionSections() -> [CollectionSection]
 }
@@ -23,6 +27,17 @@ extension Array: CollectionSectionConvertible where Element == CollectionSection
 
 // MARK: - CollectionSectionBuilder
 
+/// Result builder для декларативного описания секций коллекции.
+///
+/// Позволяет описывать содержимое коллекции в DSL-стиле:
+/// ```swift
+/// collectionView.send {
+///     CollectionSection(id: "top", layout: .plain) { ... }
+///     CollectionSection(id: "bottom", layout: .insetGrouped) { ... }
+/// }
+/// ```
+///
+/// Поддерживает `if/else`, `Optional`, `for...in` и вложенные массивы.
 @MainActor
 @resultBuilder
 struct CollectionSectionBuilder {

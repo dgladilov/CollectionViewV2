@@ -7,12 +7,19 @@
 
 import UIKit
 
-/// A generic UICollectionReusableView that hosts any ModelableView
-/// for supplementary views (headers, footers, custom supplementaries).
+/// Контейнер для supplementary-вью (хедеров, футеров и пр.).
+///
+/// При повторном вызове `configure(with:)` обновляет модель существующей вью.
+/// При первом вызове — создаёт вью и размещает в себе.
 final class SupplementaryHostView: UICollectionReusableView {
 
 	private var hostedView: UIView?
 
+	/// Конфигурирует supplementary-вью.
+	///
+	/// Если вью уже создана — обновляет модель через `updateView`.
+	/// Иначе создаёт новую вью через `makeView` и размещает с привязкой к краям.
+	/// - Parameter item: Type-erased описание supplementary-элемента.
 	func configure(with item: AnySupplementaryItem) {
 		if let existing = hostedView {
 			item.updateView(existing)

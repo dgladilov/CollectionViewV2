@@ -9,37 +9,64 @@ import UIKit
 
 // MARK: - UniqueID
 
-/// A universal Sendable, Hashable identifier used for both sections and items.
+/// Универсальный идентификатор для секций и элементов коллекции.
+///
+/// Оборачивает произвольный `Hashable`-тип в строковое представление,
+/// обеспечивая единый тип идентификатора для `DiffableDataSource`.
 struct UniqueID: Hashable, Sendable {
+
+	/// Строковое представление исходного идентификатора.
 	let rawValue: String
 
+	/// Создаёт идентификатор из произвольного `Hashable`-значения.
+	/// - Parameter id: Исходный идентификатор (например `String`, `Int`, `UUID`).
 	init<ID: Hashable>(_ id: ID) {
 		self.rawValue = "\(id)"
 	}
 }
 
+/// Псевдоним для идентификатора секции.
 typealias SectionID = UniqueID
+
+/// Псевдоним для идентификатора элемента.
 typealias ItemID = UniqueID
 
 // MARK: - AnyCollectionItem
 
-/// Type-erased wrapper for any CollectionItemable.
+/// Type-erased обёртка над любым `CollectionItemable`.
+///
+/// Стирает конкретный тип модели и вью, сохраняя возможность создавать,
+/// обновлять вью и обрабатывать пользовательские события.
+/// Используется как единица данных в `DiffableDataSource`.
 struct AnyCollectionItem {
 
+	/// Уникальный идентификатор элемента для `DiffableDataSource`.
 	let itemID: ItemID
+
+	/// Предпочтительный размер ячейки, заданный моделью.
+	/// Значение `UIView.noIntrinsicMetric` по соответствующей оси означает автоматический расчёт.
 	let preferredSize: CGSize
+
+	/// Идентификатор типа вью (`ObjectIdentifier(ViewType.self)`).
+	/// Используется для переиспользования ячеек: если тип совпадает — обновляем модель,
+	/// иначе — создаём вью заново.
 	let viewTypeId: ObjectIdentifier
 
 	private let _makeView: @MainActor () -> UIView
 	private let _updateView: @MainActor (UIView) -> Void
 
-	/// The section this item belongs to. Set automatically by `CollectionSection`.
+	/// Идентификатор секции, к которой принадлежит элемент.
+	/// Устанавливается автоматически при добавлении в `CollectionSection`.
 	private(set) var sectionID: SectionID?
-	/// Called when the item is tapped.
+
+	/// Замыкание, вызываемое при нажатии на ячейку.
 	private(set) var onTap: (@MainActor () -> Void)?
-	/// Called when the cell becomes visible on screen.
+
+	/// Замыкание, вызываемое при появлении ячейки на экране.
 	private(set) var onDisplay: (@MainActor () -> Void)?
 
+	/// Создаёт type-erased обёртку из конкретного `CollectionItemable`.
+	/// - Parameter model: Модель элемента, реализующая `CollectionItemable`.
 	@MainActor
 	init<V: CollectionItemable>(_ model: V) {
 		self.itemID = ItemID(model.id)
@@ -59,11 +86,14 @@ struct AnyCollectionItem {
 		self.onDisplay = model.onDisplay
 	}
 
+	/// Создаёт новый экземпляр вью для этого элемента.
 	@MainActor
 	func makeView() -> UIView {
 		_makeView()
 	}
 
+	/// Обновляет модель существующей вью без пересоздания.
+	/// - Parameter view: Ранее созданная вью того же типа.
 	@MainActor
 	func updateView(_ view: UIView) {
 		_updateView(view)
@@ -71,18 +101,24 @@ struct AnyCollectionItem {
 
 	// MARK: - Fluent API
 
+	/// Возвращает копию элемента с привязкой к указанной секции.
+	/// - Parameter id: Идентификатор секции.
 	func sectionID(_ id: SectionID) -> AnyCollectionItem {
 		var copy = self
 		copy.sectionID = id
 		return copy
 	}
 
+	/// Возвращает копию элемента с обработчиком нажатия.
+	/// - Parameter handler: Замыкание, вызываемое при нажатии.
 	func onTap(_ handler: @escaping @MainActor () -> Void) -> AnyCollectionItem {
 		var copy = self
 		copy.onTap = handler
 		return copy
 	}
 
+	/// Возвращает копию элемента с обработчиком появления на экране.
+	/// - Parameter handler: Замыкание, вызываемое при появлении.
 	func onDisplay(_ handler: @escaping @MainActor () -> Void) -> AnyCollectionItem {
 		var copy = self
 		copy.onDisplay = handler
@@ -92,15 +128,24 @@ struct AnyCollectionItem {
 
 // MARK: - AnySupplementaryItem
 
-/// Type-erased supplementary view descriptor (header, footer, etc.)
+/// Type-erased обёртка для supplementary-вью (хедер, футер и пр.).
+///
+/// Аналогична `AnyCollectionItem`, но для дополнительных элементов секции.
 struct AnySupplementaryItem {
 
+	/// Тип supplementary-элемента (например `UICollectionView.elementKindSectionHeader`).
 	let elementKind: String
+
+	/// Предпочтительный размер supplementary-вью.
 	let preferredSize: CGSize
 
 	private let _makeView: @MainActor () -> UIView
 	private let _updateView: @MainActor (UIView) -> Void
 
+	/// Создаёт type-erased обёртку для supplementary-элемента.
+	/// - Parameters:
+	///   - elementKind: Тип supplementary (`elementKindSectionHeader`, `elementKindSectionFooter` и пр.).
+	///   - viewable: Модель, реализующая `Viewable`.
 	@MainActor
 	init<V: Viewable>(elementKind: String, viewable: V) {
 		self.elementKind = elementKind
@@ -117,11 +162,14 @@ struct AnySupplementaryItem {
 		}
 	}
 
+	/// Создаёт новый экземпляр supplementary-вью.
 	@MainActor
 	func makeView() -> UIView {
 		_makeView()
 	}
 
+	/// Обновляет модель существующей supplementary-вью без пересоздания.
+	/// - Parameter view: Ранее созданная вью того же типа.
 	@MainActor
 	func updateView(_ view: UIView) {
 		_updateView(view)

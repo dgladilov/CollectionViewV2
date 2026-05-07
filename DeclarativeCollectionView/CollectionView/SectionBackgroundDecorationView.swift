@@ -7,11 +7,13 @@
 
 import UIKit
 
-/// Decoration view that provides a configurable background for collection view sections.
-/// Hosts an arbitrary custom UIView provided via a factory closure.
-/// Queries its `DecorationProvider` (the owning CollectionView) to get the style.
+/// Декоративная вью фона секции.
+///
+/// Размещает внутри себя произвольную пользовательскую вью, создаваемую через `DecorationStyle.custom`.
+/// Получает стиль декорации от `DecorationProvider` (реализуемого `CollectionView`).
 final class SectionBackgroundDecorationView: UICollectionReusableView {
 
+	/// Строковый идентификатор типа декорации для регистрации в layout-е.
 	static let elementKind = "section-background-decoration"
 
 	private var hostedView: UIView?

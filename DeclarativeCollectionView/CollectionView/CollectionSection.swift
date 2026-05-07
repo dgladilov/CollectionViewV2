@@ -9,23 +9,28 @@ import UIKit
 
 // MARK: - SectionLayout
 
-/// Layout descriptor for a collection section based on `UICollectionLayoutListConfiguration.Appearance`.
-/// For fully custom layouts, use `.custom(...)`.
+/// Описание layout-а секции коллекции.
+///
+/// Стандартные кейсы соответствуют вариантам `UICollectionLayoutListConfiguration.Appearance`.
+/// Для нестандартных layout-ов используйте `.custom(...)`.
 enum SectionLayout: Sendable {
-	/// Plain list (UICollectionLayoutListConfiguration.Appearance.plain)
+	/// Плоский список (`UICollectionLayoutListConfiguration.Appearance.plain`).
 	case plain
-	/// Inset grouped list (UICollectionLayoutListConfiguration.Appearance.insetGrouped)
+	/// Сгруппированный список с отступами (`UICollectionLayoutListConfiguration.Appearance.insetGrouped`).
 	case insetGrouped
-	/// Grouped list (UICollectionLayoutListConfiguration.Appearance.grouped)
+	/// Сгруппированный список (`UICollectionLayoutListConfiguration.Appearance.grouped`).
 	case grouped
-	/// Sidebar (UICollectionLayoutListConfiguration.Appearance.sidebar)
+	/// Боковая панель (`UICollectionLayoutListConfiguration.Appearance.sidebar`).
 	case sidebar
-	/// Sidebar plain (UICollectionLayoutListConfiguration.Appearance.sidebarPlain)
+	/// Плоская боковая панель (`UICollectionLayoutListConfiguration.Appearance.sidebarPlain`).
 	case sidebarPlain
-	/// Custom layout built from a closure
+	/// Произвольный layout, задаваемый замыканием.
+	/// - Parameter closure: Принимает `NSCollectionLayoutEnvironment`, возвращает `NSCollectionLayoutSection`.
 	case custom(@MainActor @Sendable (NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection)
 
-	/// Resolves the enum case into an `NSCollectionLayoutSection`.
+	/// Создаёт `NSCollectionLayoutSection` на основе выбранного кейса.
+	/// - Parameter environment: Контекст layout-а (размеры контейнера, trait collection).
+	/// - Returns: Готовый layout секции.
 	@MainActor func makeLayoutSection(environment: NSCollectionLayoutEnvironment) -> NSCollectionLayoutSection {
 		switch self {
 		case .plain:
@@ -61,24 +66,60 @@ enum SectionLayout: Sendable {
 
 // MARK: - DecorationStyle
 
+/// Стиль декоративного фона секции.
 enum DecorationStyle {
+	/// Без декоративного фона.
 	case none
+	/// Произвольная вью в качестве фона, создаваемая замыканием.
 	case custom(@MainActor () -> UIView)
 }
 
 // MARK: - CollectionSection
 
+/// Описание одной секции коллекции: layout, элементы, хедер, футер и декорация.
+///
+/// Секция создаётся с уникальным `id` и набором элементов.
+/// Дополнительные параметры (хедер, футер, декорация, отступы) задаются через fluent API:
+/// ```swift
+/// CollectionSection(id: "news", layout: .plain) {
+///     NewsItem(id: "1", title: "Заголовок")
+/// }
+/// .header(NewsHeaderModel())
+/// .insets(NSDirectionalEdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+/// ```
 struct CollectionSection: Sendable {
 
+	/// Уникальный идентификатор секции.
 	let id: SectionID
+
+	/// Layout секции.
 	let layout: SectionLayout
+
+	/// Массив type-erased элементов секции.
 	let items: [AnyCollectionItem]
+
+	/// Хедер секции. Задаётся через `.header(...)`.
 	var header: AnySupplementaryItem?
+
+	/// Футер секции. Задаётся через `.footer(...)`.
 	var footer: AnySupplementaryItem?
+
+	/// Дополнительные supplementary-вью (кроме хедера и футера).
 	var supplementaries: [AnySupplementaryItem]
+
+	/// Стиль декоративного фона.
 	var decoration: DecorationStyle
+
+	/// Отступы содержимого секции.
 	var contentInsets: NSDirectionalEdgeInsets
 
+	/// Создаёт секцию с декларативным билдером элементов.
+	/// - Parameters:
+	///   - id: Уникальный строковый идентификатор секции.
+	///   - layout: Layout секции.
+	///   - decoration: Стиль декоративного фона (по умолчанию `.none`).
+	///   - contentInsets: Отступы содержимого (по умолчанию `.zero`).
+	///   - items: Билдер элементов (`@CollectionItemBuilder`).
 	@MainActor init(
 		id: String,
 		layout: SectionLayout,
@@ -97,6 +138,13 @@ struct CollectionSection: Sendable {
 		self.contentInsets = contentInsets
 	}
 
+	/// Создаёт секцию из готового массива `AnyCollectionItem`.
+	/// - Parameters:
+	///   - id: Уникальный строковый идентификатор секции.
+	///   - layout: Layout секции.
+	///   - decoration: Стиль декоративного фона (по умолчанию `.none`).
+	///   - contentInsets: Отступы содержимого (по умолчанию `.zero`).
+	///   - items: Массив type-erased элементов.
 	@MainActor init(
 		id: String,
 		layout: SectionLayout,
@@ -115,6 +163,13 @@ struct CollectionSection: Sendable {
 		self.contentInsets = contentInsets
 	}
 
+	/// Создаёт секцию из массива `CollectionItemable` без ручной обёртки в `AnyCollectionItem`.
+	/// - Parameters:
+	///   - id: Уникальный строковый идентификатор секции.
+	///   - layout: Layout секции.
+	///   - decoration: Стиль декоративного фона (по умолчанию `.none`).
+	///   - contentInsets: Отступы содержимого (по умолчанию `.zero`).
+	///   - items: Массив моделей, реализующих `CollectionItemable`.
 	@MainActor init(
 		id: String,
 		layout: SectionLayout,
@@ -135,6 +190,8 @@ struct CollectionSection: Sendable {
 
 	// MARK: - Fluent API
 
+	/// Возвращает копию секции с хедером.
+	/// - Parameter viewable: Модель хедера, реализующая `Viewable`.
 	@MainActor
 	func header<V: Viewable>(_ viewable: V) -> CollectionSection {
 		var copy = self
@@ -145,6 +202,8 @@ struct CollectionSection: Sendable {
 		return copy
 	}
 
+	/// Возвращает копию секции с футером.
+	/// - Parameter viewable: Модель футера, реализующая `Viewable`.
 	@MainActor
 	func footer<V: Viewable>(_ viewable: V) -> CollectionSection {
 		var copy = self
@@ -155,6 +214,10 @@ struct CollectionSection: Sendable {
 		return copy
 	}
 
+	/// Возвращает копию секции с дополнительным supplementary-элементом.
+	/// - Parameters:
+	///   - kind: Строковый идентификатор типа supplementary.
+	///   - viewable: Модель supplementary, реализующая `Viewable`.
 	@MainActor
 	func supplementary<V: Viewable>(kind: String, _ viewable: V) -> CollectionSection {
 		var copy = self
@@ -164,12 +227,16 @@ struct CollectionSection: Sendable {
 		return copy
 	}
 
+	/// Возвращает копию секции с указанным стилем декоративного фона.
+	/// - Parameter style: Стиль декорации.
 	func decoration(_ style: DecorationStyle) -> CollectionSection {
 		var copy = self
 		copy.decoration = style
 		return copy
 	}
 
+	/// Возвращает копию секции с указанными отступами содержимого.
+	/// - Parameter insets: Отступы.
 	func insets(_ insets: NSDirectionalEdgeInsets) -> CollectionSection {
 		var copy = self
 		copy.contentInsets = insets

@@ -7,17 +7,23 @@
 
 import Foundation
 
-/// A reactive data source for collection sections backed by AsyncStream.
+/// Реактивный источник данных секций, основанный на `AsyncStream`.
 ///
-/// Supports both full replacement and granular operations (append, insert, remove, update).
-/// Every mutation automatically pushes the updated state to the collection view.
+/// Хранит текущий массив секций и уведомляет подписчиков о каждом изменении.
+/// Поддерживает как полную замену секций, так и гранулярные операции
+/// (добавление, вставка, удаление, обновление).
+///
+/// Каждая мутация автоматически публикует обновлённое состояние в `stream`.
 @MainActor
 final class SectionsSource {
 
 	private var continuation: AsyncStream<[CollectionSection]>.Continuation?
+
+	/// Текущий массив секций.
 	private(set) var current: [CollectionSection] = []
 
-	/// The async stream of section updates. Consume this in a `for await` loop.
+	/// Асинхронный поток обновлений секций.
+	/// Подпишитесь через `for await` для получения уведомлений об изменениях.
 	let stream: AsyncStream<[CollectionSection]>
 
 	init() {
@@ -26,58 +32,75 @@ final class SectionsSource {
 		self.continuation = continuation
 	}
 
-	// MARK: - Full Replacement
+	// MARK: - Полная замена
 
-	/// Replace all sections at once.
+	/// Заменяет все секции переданным массивом.
+	/// - Parameter sections: Новый массив секций.
 	func send(_ sections: [CollectionSection]) {
 		current = sections
 		continuation?.yield(current)
 	}
 
-	/// Replace all sections using the declarative builder.
+	/// Заменяет все секции с помощью декларативного билдера.
+	/// - Parameter builder: Билдер секций (`@CollectionSectionBuilder`).
 	func send(@CollectionSectionBuilder _ builder: () -> [CollectionSection]) {
 		send(builder())
 	}
 
-	// MARK: - Append
+	// MARK: - Добавление
 
-	/// Append a section to the end.
+	/// Добавляет секцию в конец списка.
+	/// - Parameter section: Секция для добавления.
 	func append(_ section: CollectionSection) {
 		current.append(section)
 		continuation?.yield(current)
 	}
 
-	/// Append multiple sections to the end.
+	/// Добавляет несколько секций в конец списка.
+	/// - Parameter sections: Массив секций для добавления.
 	func append(contentsOf sections: [CollectionSection]) {
 		current.append(contentsOf: sections)
 		continuation?.yield(current)
 	}
 
-	// MARK: - Insert
+	// MARK: - Вставка
 
-	/// Insert a section at the given index.
+	/// Вставляет секцию по указанному индексу.
+	/// - Parameters:
+	///   - section: Секция для вставки.
+	///   - index: Позиция вставки.
 	func insert(_ section: CollectionSection, at index: Int) {
 		current.insert(section, at: index)
 		continuation?.yield(current)
 	}
 
-	/// Insert a section after the section with the given id.
+	/// Вставляет секцию после секции с указанным идентификатором.
+	/// Если секция с таким `id` не найдена — вызов игнорируется.
+	/// - Parameters:
+	///   - section: Секция для вставки.
+	///   - sectionID: Идентификатор секции, после которой вставлять.
 	func insert(_ section: CollectionSection, after sectionID: String) {
 		guard let idx = indexForID(sectionID) else { return }
 		current.insert(section, at: idx + 1)
 		continuation?.yield(current)
 	}
 
-	/// Insert a section before the section with the given id.
+	/// Вставляет секцию перед секцией с указанным идентификатором.
+	/// Если секция с таким `id` не найдена — вызов игнорируется.
+	/// - Parameters:
+	///   - section: Секция для вставки.
+	///   - sectionID: Идентификатор секции, перед которой вставлять.
 	func insert(_ section: CollectionSection, before sectionID: String) {
 		guard let idx = indexForID(sectionID) else { return }
 		current.insert(section, at: idx)
 		continuation?.yield(current)
 	}
 
-	// MARK: - Remove
+	// MARK: - Удаление
 
-	/// Remove the section with the given id.
+	/// Удаляет секцию с указанным идентификатором.
+	/// - Parameter sectionID: Строковый идентификатор секции.
+	/// - Returns: Удалённая секция, или `nil` если секция не найдена.
 	@discardableResult
 	func remove(sectionID: String) -> CollectionSection? {
 		guard let idx = indexForID(sectionID) else { return nil }
@@ -86,7 +109,9 @@ final class SectionsSource {
 		return removed
 	}
 
-	/// Remove the section at the given index.
+	/// Удаляет секцию по индексу.
+	/// - Parameter index: Индекс удаляемой секции.
+	/// - Returns: Удалённая секция.
 	@discardableResult
 	func remove(at index: Int) -> CollectionSection {
 		let removed = current.remove(at: index)
@@ -94,31 +119,40 @@ final class SectionsSource {
 		return removed
 	}
 
-	/// Remove all sections.
+	/// Удаляет все секции.
 	func removeAll() {
 		current.removeAll()
 		continuation?.yield(current)
 	}
 
-	// MARK: - Update
+	// MARK: - Обновление
 
-	/// Replace the section with the matching id.
+	/// Заменяет секцию с совпадающим `id`.
+	/// Если секция с таким `id` не найдена — вызов игнорируется.
+	/// - Parameter section: Новая секция (должна иметь тот же `id`).
 	func update(_ section: CollectionSection) {
 		guard let idx = indexForID(section.id.rawValue) else { return }
 		current[idx] = section
 		continuation?.yield(current)
 	}
 
-	/// Mutate the section with the given id in-place.
+	/// Мутирует секцию с указанным `id` через замыкание.
+	/// Если секция с таким `id` не найдена — вызов игнорируется.
+	/// - Parameters:
+	///   - sectionID: Строковый идентификатор секции.
+	///   - transform: Замыкание для мутации секции.
 	func update(sectionID: String, _ transform: (inout CollectionSection) -> Void) {
 		guard let idx = indexForID(sectionID) else { return }
 		transform(&current[idx])
 		continuation?.yield(current)
 	}
 
-	// MARK: - Batch
+	// MARK: - Батчинг
 
-	/// Perform multiple mutations in a batch, emitting only one update at the end.
+	/// Выполняет несколько мутаций в одном батче, публикуя только одно обновление в конце.
+	///
+	/// Промежуточные `yield` подавляются на время выполнения замыкания.
+	/// - Parameter mutations: Замыкание с мутациями.
 	func batch(_ mutations: (SectionsSource) -> Void) {
 		let saved = continuation
 		continuation = nil   // suppress intermediate yields
@@ -127,14 +161,16 @@ final class SectionsSource {
 		continuation?.yield(current)
 	}
 
-	// MARK: - Query
+	// MARK: - Запросы
 
-	/// Returns the section with the given id, or nil.
+	/// Возвращает секцию с указанным идентификатором, или `nil`.
+	/// - Parameter id: Строковый идентификатор секции.
 	func section(id: String) -> CollectionSection? {
 		current.first { $0.id.rawValue == id }
 	}
 
-	/// Returns the index of the section with the given id, or nil.
+	/// Возвращает индекс секции с указанным идентификатором, или `nil`.
+	/// - Parameter sectionID: Строковый идентификатор секции.
 	func index(of sectionID: String) -> Int? {
 		indexForID(sectionID)
 	}
@@ -149,4 +185,3 @@ final class SectionsSource {
 		continuation?.finish()
 	}
 }
-
